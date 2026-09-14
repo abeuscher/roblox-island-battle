@@ -84,9 +84,22 @@ local function applyDelta(payload: any)
 	ui:update(view)
 end
 
+-- Projectile-only pushes arrive between snapshots, so motion stays smooth
+-- without the server rebuilding a whole view at frame rate.
+local function applyProjectiles(payload: any)
+	if not view then
+		return
+	end
+	view.myProjectiles = payload.myProjectiles or {}
+	view.incomingProjectiles = payload.incomingProjectiles or {}
+	render:syncProjectiles(view.myProjectiles, view.incomingProjectiles)
+end
+
 SnapshotRemote.OnClientEvent:Connect(function(payload)
 	if payload.kind == "full" then
 		applyFull(payload)
+	elseif payload.kind == "projectiles" then
+		applyProjectiles(payload)
 	else
 		applyDelta(payload)
 	end

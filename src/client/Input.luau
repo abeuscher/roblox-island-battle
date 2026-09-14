@@ -36,11 +36,22 @@ function Input.new(camera: any, getView: (() -> any)?, onModeChanged: ((string, 
 	}, Input)
 end
 
+-- Resolved from the structures the client already holds rather than from a
+-- replicated occupancy map, so it stays correct after a delta that only
+-- carried the structure list. These are all the player's OWN structures;
+-- there is no enemy equivalent, by design.
 local function structureAt(view: any, x: number, y: number): number?
-	if not view or not view.occ then
+	if not view or not view.structures then
 		return nil
 	end
-	return view.occ[x .. "," .. y]
+	for id, s in view.structures do
+		local def = Config.WEAPONS[s.kind]
+		local footprint = def and def.footprint or 1
+		if x >= s.x and x < s.x + footprint and y >= s.y and y < s.y + footprint then
+			return id
+		end
+	end
+	return nil
 end
 
 function Input:setMode(mode: string, payload: any?)

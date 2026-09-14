@@ -133,6 +133,36 @@ return {
 		T.eq(view.belief[Grid.key(8, 8)].kind, "base")
 	end,
 
+	["projectilesFor applies the same fog rule as viewFor"] = function()
+		local state = Helpers.startCombat(Config, 42)
+		state.players[2].coin = 500
+		local id = Helpers.placeAndBuild(state, 2, "catapult", 33, 18)
+		state.players[2].charge = Config.CHARGE_CAP
+		Rules.stepMut(state, { { player = 2, type = "fire", structId = id, x = 20, y = 18 } }, 0)
+
+		-- The shooter always sees its own shot.
+		local mine = Rules.projectilesFor(state, 2)
+		T.ok(next(mine) ~= nil, "owner sees its own projectile")
+		-- The target does not, while it is still out over the channel.
+		local _, incoming = Rules.projectilesFor(state, 1)
+		T.eq(next(incoming), nil, "not visible over the channel")
+
+		-- Once overhead it becomes visible, and only then.
+		local appeared = false
+		for _ = 1, 40 do
+			Rules.stepMut(state, {}, 0.25)
+			local _, overhead = Rules.projectilesFor(state, 1)
+			if next(overhead) ~= nil then
+				appeared = true
+				break
+			end
+			if state.phase == "ended" then
+				break
+			end
+		end
+		T.ok(appeared, "an incoming shot becomes visible over the defender's island")
+	end,
+
 	["viewFor shows incoming enemy projectiles only once over my island"] = function()
 		local state = Helpers.startCombat(Config, 42)
 		state.players[2].coin = 500

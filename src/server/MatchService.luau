@@ -25,6 +25,11 @@ local RequestRemote = Remotes:WaitForChild("Request") :: RemoteEvent
 -- variable frame deltas. Leftover time carries to the next frame.
 local STEP = 1 / 20
 
+-- The full per-player diff rebuilds a fog-filtered view, which is the most
+-- expensive thing the server does, so it runs at 10 Hz. Projectiles get
+-- their own much cheaper push every frame so motion stays smooth.
+local SNAPSHOT_INTERVAL = 1 / 10
+
 local MatchService = {}
 MatchService.__index = MatchService
 
@@ -41,6 +46,7 @@ function MatchService.new(config: any?)
 		commands = CommandHandler.new(),
 		queue = {} :: { any },
 		accumulator = 0,
+		sinceSnapshot = 0,
 		disconnected = {} :: { [number]: number },
 		running = false,
 	}, MatchService)
@@ -56,6 +62,7 @@ function MatchService:startMatch(seed: number?)
 	self.state = Rules.newMatch(self.config, actualSeed)
 	self.queue = {}
 	self.accumulator = 0
+	self.sinceSnapshot = 0
 	self.disconnected = {}
 
 	if self.bot then
@@ -73,19 +80,45 @@ end
 -- Seats a player. The second seat falls back to a bot so a 1v1 game is
 -- playable with an empty player base (SPEC §9).
 function MatchService:addPlayer(player: Player): number?
-	for seat = 1, 2 do
-		if self.seats[seat] == nil and self.botSeat ~= seat then
-			self.seats[seat] = player
-			self.seatOf[player] = seat
-			self.disconnected[seat] = nil
-			if self.state then
-				self.replication:reset(seat)
-				self.replication:pushFull(self.state, seat, player)
-			end
-			return seat
+	local function seat(index: number): number
+		self.seats[index] = player
+		self.seatOf[player] = index
+		self.disconnected[index] = nil
+		if self.state then
+			self.replication:reset(index)
+			self.replication:pushFull(self.state, index, player)
+		end
+		return index
+	end
+
+	for index = 1, 2 do
+		if self.seats[index] == nil and self.botSeat ~= index then
+			return seat(index)
 		end
 	end
+
+	-- A real opponent displaces the bot, which only ever held the seat so
+	-- that a 1v1 game is playable with nobody else online (SPEC §9).
+	if self.botSeat and self.seats[self.botSeat] == nil then
+		local index = self.botSeat
+		self:releaseBot()
+		return seat(index)
+	end
+
 	return nil
+end
+
+-- Hands the bot's seat back. Its difficulty coin multiplier goes with it:
+-- a human must never inherit the bot's income scaling.
+function MatchService:releaseBot()
+	if not self.botSeat then
+		return
+	end
+	if self.state then
+		self.state.players[self.botSeat].coinMultiplier = 1
+	end
+	self.bot = nil
+	self.botSeat = nil
 end
 
 function MatchService:removePlayer(player: Player)
@@ -100,6 +133,7 @@ function MatchService:removePlayer(player: Player)
 end
 
 function MatchService:useBot(seat: number, preset: string)
+	self.botPreset = preset
 	self.botSeat = seat
 	self.seats[seat] = nil
 	self.bot = Bot.new(self.config, seat, preset, os.time())
@@ -197,13 +231,21 @@ function MatchService:step(dt: number)
 		end
 	end
 
+	self.sinceSnapshot += dt
+	local sendSnapshot = self.sinceSnapshot >= SNAPSHOT_INTERVAL or state.phase ~= phaseBefore
+	if sendSnapshot then
+		self.sinceSnapshot = 0
+	end
+
 	for seat = 1, 2 do
 		local player = self.seats[seat]
 		if player then
 			if state.phase ~= phaseBefore then
 				self.replication:pushFull(state, seat, player)
-			else
+			elseif sendSnapshot then
 				self.replication:pushDelta(state, seat, player)
+			else
+				self.replication:pushProjectiles(state, seat, player)
 			end
 			self.replication:pushEvents(pushEvents, seat, player)
 		end

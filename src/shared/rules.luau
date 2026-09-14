@@ -460,6 +460,25 @@ function Rules.filterEventsFor(events: { State.Event }, playerIndex: number): { 
 	return out
 end
 
+-- Just the projectiles a player may see, without building a whole view.
+-- Projectiles move every frame but the rest of a view (a belief map of up
+-- to ~1,000 plots) changes rarely, so this exists to let the server push
+-- smooth projectile motion without rebuilding everything else at frame
+-- rate. Same fog rule as viewFor: an enemy projectile appears only once it
+-- is over this player's island.
+function Rules.projectilesFor(state: State.MatchState, playerIndex: number)
+	local d = state.config.ISLAND_DIAMETER
+	local mine, incoming = {}, {}
+	for id, proj in state.projectiles do
+		if proj.owner == playerIndex then
+			mine[id] = { kind = proj.kind, x = proj.x, y = proj.y, hp = proj.hp, laneY = proj.laneY }
+		elseif proj.x <= d then
+			incoming[id] = { kind = proj.kind, x = proj.x, y = proj.y, laneY = proj.laneY }
+		end
+	end
+	return mine, incoming
+end
+
 -- A deep-copied, fog-filtered snapshot for one player. Contains that
 -- player's full own state, their stale belief map of the enemy, and only
 -- the enemy projectiles that are visibly over their island. It NEVER

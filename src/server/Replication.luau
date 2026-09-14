@@ -33,6 +33,7 @@ function Replication.new()
 		-- Per player: what we have already sent, so deltas stay small.
 		sentPlots = {} :: { [number]: { [string]: number } },
 		sentStructures = {} :: { [number]: { [number]: string } },
+		hadProjectiles = {} :: { [number]: boolean },
 	}, Replication)
 end
 
@@ -135,9 +136,28 @@ function Replication:pushEvents(events: { any }, playerIndex: number, player: Pl
 	end
 end
 
+-- Frame-rate projectile push. Deliberately tiny: it carries no plots and no
+-- structures, so it can run every frame without rebuilding a view.
+function Replication:pushProjectiles(state: any, playerIndex: number, player: Player?)
+	if not player then
+		return
+	end
+	local mine, incoming = Rules.projectilesFor(state, playerIndex)
+	if next(mine) == nil and next(incoming) == nil and not self.hadProjectiles[playerIndex] then
+		return -- nothing in the air and nothing to clear
+	end
+	self.hadProjectiles[playerIndex] = next(mine) ~= nil or next(incoming) ~= nil
+	SnapshotRemote:FireClient(player, {
+		kind = "projectiles",
+		myProjectiles = mine,
+		incomingProjectiles = incoming,
+	})
+end
+
 function Replication:reset(playerIndex: number)
 	self.sentPlots[playerIndex] = nil
 	self.sentStructures[playerIndex] = nil
+	self.hadProjectiles[playerIndex] = nil
 end
 
 return Replication
