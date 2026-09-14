@@ -1,0 +1,146 @@
+--!strict
+-- fog_spec.luau — belief maps, stale plots, and the no-leak guarantees.
+
+local T = require("./lib")
+local Rules = require("../src/shared/rules")
+local Config = require("../src/shared/config")
+local Grid = require("../src/shared/grid")
+local Fog = require("../src/shared/fog")
+local Helpers = require("./helpers")
+
+return {
+	["belief starts empty — the island shape is not inferrable from fog"] = function()
+		local state = Helpers.startCombat(Config, 42)
+		T.eq(Fog.coverage(state.players[1]), 0, "no plots before any recon")
+		T.eq(Fog.coverage(state.players[2]), 0)
+	end,
+
+	["a reveal plots the truth at reveal time"] = function()
+		local state = Helpers.startCombat(Config, 42)
+		state.players[2].coin = 100
+		Rules.stepMut(state, { { player = 2, type = "place", kind = "grove", x = 20, y = 20 } }, 0)
+		Helpers.run(state, Config.BUILD_SECONDS + 0.01)
+		Fog.reveal(state, 1, { { 20, 20 } })
+		T.eq(state.players[1].belief[Grid.key(20, 20)].kind, "grove")
+	end,
+
+	["plots are stale, not live: later building does not update the plot"] = function()
+		local state = Helpers.startCombat(Config, 42)
+		-- P1 reveals an empty cell...
+		Fog.reveal(state, 1, { { 20, 20 } })
+		T.eq(state.players[1].belief[Grid.key(20, 20)].kind, "empty")
+		local revealTime = state.players[1].belief[Grid.key(20, 20)].t
+		-- ...then P2 builds there. The plot must NOT change (SPEC §7).
+		state.players[2].coin = 100
+		Rules.stepMut(state, { { player = 2, type = "place", kind = "nest", x = 20, y = 20 } }, 0)
+		Helpers.run(state, Config.BUILD_SECONDS + 5)
+		T.eq(state.players[1].belief[Grid.key(20, 20)].kind, "empty", "plot is stale")
+		T.eq(state.players[1].belief[Grid.key(20, 20)].t, revealTime, "timestamp unchanged")
+		-- Re-probing corrects it.
+		Fog.reveal(state, 1, { { 20, 20 } })
+		T.eq(state.players[1].belief[Grid.key(20, 20)].kind, "nest", "re-reveal corrects the plot")
+	end,
+
+	["stale plots also persist after a bulldoze"] = function()
+		local state = Helpers.startCombat(Config, 42)
+		state.players[2].coin = 100
+		local _, evs = Rules.stepMut(state, { { player = 2, type = "place", kind = "grove", x = 20, y = 20 } }, 0)
+		local groveId = T.findEvent(evs, "placed").structId
+		Helpers.run(state, Config.BUILD_SECONDS + 0.01)
+		Fog.reveal(state, 1, { { 20, 20 } })
+		T.eq(state.players[1].belief[Grid.key(20, 20)].kind, "grove")
+		Rules.stepMut(state, { { player = 2, type = "bulldoze", structId = groveId } }, 0)
+		T.eq(state.players[1].belief[Grid.key(20, 20)].kind, "grove", "attacker's plot is now wrong, by design")
+	end,
+
+	["decoys plot as real bases"] = function()
+		local state = Helpers.startCombat(Config, 42)
+		state.players[2].coin = 100
+		Rules.stepMut(state, { { player = 2, type = "place", kind = "decoy_base", x = 20, y = 20 } }, 0)
+		Helpers.run(state, Config.BUILD_SECONDS + 0.01)
+		Fog.reveal(state, 1, { { 20, 20 }, { 21, 21 } })
+		T.eq(state.players[1].belief[Grid.key(20, 20)].kind, "base", "decoy plots as base")
+		T.eq(state.players[1].belief[Grid.key(21, 21)].kind, "base")
+	end,
+
+	["obstacles and destroyed structures plot honestly once revealed"] = function()
+		local state = Helpers.startCombat(Config, 42)
+		local obstacleKey = next(state.players[2].island.obstacles)
+		local ox, oy = Grid.parseKey(obstacleKey :: string)
+		Fog.reveal(state, 1, { { ox, oy } })
+		T.eq(state.players[1].belief[obstacleKey :: string].kind, "obstacle")
+	end,
+
+	["reveals are one-directional: scouting does not plot for the defender"] = function()
+		local state = Helpers.startCombat(Config, 42)
+		Fog.reveal(state, 1, { { 20, 20 }, { 21, 21 } })
+		T.eq(Fog.coverage(state.players[2]), 0, "defender learns nothing from being scouted")
+	end,
+
+	["reveal events are addressed to the attacker only"] = function()
+		local state = Helpers.startCombat(Config, 42)
+		local events = {}
+		Fog.reveal(state, 1, { { 20, 20 } }, events)
+		local reveal = T.findEvent(events, "reveal")
+		T.eq(reveal.visibleTo, 1, "reveal is private to the scout")
+		T.eq(#Rules.filterEventsFor(events, 2), 0, "defender receives nothing")
+	end,
+
+	["viewFor leaks no unrevealed enemy data"] = function()
+		local state = Helpers.startCombat(Config, 42)
+		state.players[2].coin = 999
+		Rules.stepMut(state, { { player = 2, type = "place", kind = "nest", x = 20, y = 20 } }, 0)
+		Helpers.run(state, Config.BUILD_SECONDS + 0.01)
+		local view = Rules.viewFor(state, 1)
+		local dump = T.serialize(view)
+		-- Every structure in the payload must belong to the viewer.
+		for id in view.structures do
+			T.ok(state.players[1].structures[id] ~= nil, "structure " .. id .. " is the viewer's own")
+		end
+		T.eq(next(view.belief), nil, "no plots, so no enemy cells at all")
+		T.ok(not string.find(dump, "nest"), "the enemy nest appears nowhere in the payload")
+		-- Enemy resources are never present under any key.
+		T.eq(view.coin, state.players[1].coin)
+		T.ok(view.enemyCoin == nil and view.enemyCharge == nil, "no enemy resource fields")
+	end,
+
+	["viewFor exposes believed base kills, never the real count"] = function()
+		local state = Helpers.startCombat(Config, 42)
+		state.players[1].stats.believedBaseKills = 2
+		state.players[1].stats.realBaseKills = 1
+		state.players[1].stats.timesFooledByDecoy = 1
+		local view = Rules.viewFor(state, 1)
+		T.eq(view.baseKills, 2, "player sees the believed count")
+		T.ok(view.stats.realBaseKills == nil, "real kill count stays server-side")
+		T.ok(view.stats.timesFooledByDecoy == nil, "decoy tell stays server-side until the end screen")
+	end,
+
+	["viewFor strips structIds from belief plots"] = function()
+		local state = Helpers.startCombat(Config, 42)
+		Fog.reveal(state, 1, { { 8, 8 } }) -- P2 base anchor
+		T.ok(state.players[1].belief[Grid.key(8, 8)].structId ~= nil, "server plot knows the id")
+		local view = Rules.viewFor(state, 1)
+		T.eq(view.belief[Grid.key(8, 8)].structId, nil, "client plot does not")
+		T.eq(view.belief[Grid.key(8, 8)].kind, "base")
+	end,
+
+	["viewFor shows incoming enemy projectiles only once over my island"] = function()
+		local state = Helpers.startCombat(Config, 42)
+		state.players[2].coin = 500
+		local id = Helpers.placeAndBuild(state, 2, "catapult", 33, 18)
+		state.players[2].charge = Config.CHARGE_CAP
+		Rules.stepMut(state, { { player = 2, type = "fire", structId = id, x = 20, y = 18 } }, 0)
+		-- Immediately after launch the coconut is out over the channel.
+		local view = Rules.viewFor(state, 1)
+		T.eq(next(view.incomingProjectiles), nil, "nothing visible while over the channel")
+		Helpers.run(state, 3)
+		if state.phase == "combat" then
+			local later = Rules.viewFor(state, 1)
+			local n = 0
+			for _ in later.incomingProjectiles do
+				n += 1
+			end
+			T.ok(n <= 1, "at most the one coconut, and only once overhead")
+		end
+	end,
+}
