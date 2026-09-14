@@ -462,6 +462,42 @@ output while the tension in §3.7 stands.
 
 ---
 
+## 3.9 The bot, measured rather than asserted
+
+Because the bot's FSM is pure Luau it can be entered in the round robin
+alongside the scripted archetypes, which is the only way to find out whether
+"three difficulties" means anything. Over 768 matches against the five
+archetypes and each other:
+
+| entrant | win rate vs the field |
+|---|---|
+| `bot_siege` (hard) | 0.679 |
+| `scout` | 0.637 |
+| `boomer` | 0.512 |
+| `bot_skirmish` (medium) | 0.494 |
+| `rusher` | 0.476 |
+| `bot_beachcomber` (easy) | 0.470 |
+| `trickster` | 0.375 |
+| `turtle` | 0.357 |
+
+The presets form a clean monotonic gradient, the hard preset beats every
+scripted archetype including `scout`, and the easy preset sits just under
+even against the field. That is what M6 asks for: an opponent you can lose
+to, and one you can beat.
+
+Worth noting that the §11.3 "no archetype above 0.60" gate applies to
+archetypes, not to a difficulty preset — a hard bot is *supposed* to win
+more than half its games. `scout` at 0.637 is the entry that breaches the
+gate, consistently with every other grid.
+
+This measurement is also how a defect in the harness was found: the first
+run returned three byte-identical rows for the three presets, because the
+harness paced every agent at `SIM_AGENT_ACTION_INTERVAL` and ignored the
+income multiplier the server applies in a live match. Agents now declare
+their own (slower-only) action interval and multiplier. Without that fix the
+round robin looked like it was measuring a bot when it was measuring one bot
+three times.
+
 ## 4. Smaller calls, recorded for completeness
 
 - **Tiebreak on Coin spent goes to the bigger spender.** §6 names the chain
