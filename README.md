@@ -23,6 +23,7 @@ lune run test          # the full spec suite; must be green before anything else
 lune run sim           # one match per archetype pairing, printed as a summary
 lune run roundrobin    # win-rate matrix + every SPEC §11.3 metric + pathology pass
 lune run sweep first   # the anti-air parameter grid
+lune run shortlist     # rank every swept configuration, best first
 ```
 
 Requires [Lune](https://github.com/lune-org/lune) on `PATH` (built against
@@ -46,7 +47,10 @@ for s in 1 2 3 4; do lune run sweep first $s 4 16 & done; wait
 ```
 
 Output lands in `sim/out/` (gitignored): one CSV per shard, plus
-`flagged.jsonl` from the pathology pass.
+`flagged.jsonl` from the pathology pass. `lune run shortlist [grid]` reads
+all of it back and ranks the configurations — surviving ones if any survive,
+and otherwise by how many gates each misses and by how far, which is the
+current state and a finding in itself (see `DECISIONS.md` §3).
 
 ### In Studio
 
