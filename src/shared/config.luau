@@ -91,7 +91,11 @@ Config.SETUP_ALLOWS_RECON = true
 ----------------------------------------------------------------------------
 Config.BIRD_HP = 20 -- [AA-LEVER] one center nest (dps 10) kills in 2 s
 Config.BIRD_SPEED = 6 -- cells/second; a 36-cell pass takes 6 s
-Config.BIRD_LANE_WIDTH = 8 -- live reveal lane width (~28% of island/pass)
+-- Base live reveal lane width (~28% of the island per pass at tier 0).
+-- The authoritative value at runtime is the perch's `reveal_size`, which is
+-- tier-aware; this is the tier-0 value it is set from, and a test asserts
+-- the two stay in step.
+Config.BIRD_LANE_WIDTH = 8
 
 ----------------------------------------------------------------------------
 -- Bot (SPEC §9)
@@ -233,8 +237,10 @@ Config.WEAPONS = {
 		footprint = 1,
 		max_hp_building_factor = 0.5,
 		upgrades = {
-			{ coin_cost = 12, overrides = { cooldown = 14 } },
-			{ coin_cost = 20, overrides = { bird_hp_bonus = 10 } },
+			-- Both tiers stay in the "find" role: a faster, wider, tougher
+			-- search, never a weapon. An upgraded perch is still a scout.
+			{ coin_cost = 12, overrides = { cooldown = 14, reveal_size = 10 } },
+			{ coin_cost = 20, overrides = { bird_hp_bonus = 10, reveal_size = 12 } },
 		},
 	} :: WeaponDef,
 

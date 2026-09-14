@@ -183,6 +183,43 @@ return {
 		T.eq(state.players[1].stats.birdsLost, 1)
 	end,
 
+	["bird lane width is the perch's tier stat, and tier 0 matches the config"] = function()
+		local Weapons = require("../src/shared/weapons")
+		T.eq(
+			Weapons.getStat(Config, "perch", 0, "reveal_size"),
+			Config.BIRD_LANE_WIDTH,
+			"tier 0 lane width is the documented BIRD_LANE_WIDTH"
+		)
+		-- Upgrading widens the lane, so a bird flown late in a match
+		-- reveals more than the opening one did.
+		T.ok(Weapons.getStat(Config, "perch", 1, "reveal_size") > Config.BIRD_LANE_WIDTH, "tier 1 is wider")
+		T.ok(
+			Weapons.getStat(Config, "perch", 2, "reveal_size")
+				> Weapons.getStat(Config, "perch", 1, "reveal_size"),
+			"tier 2 is wider still"
+		)
+		T.eq(Weapons.getStat(Config, "perch", 2, "role"), "find", "still a scout, never a weapon")
+		T.eq(Weapons.getStat(Config, "perch", 2, "damage"), 0, "an upgraded perch still does no damage")
+
+		-- And the widened lane actually reveals more ground in play.
+		local function laneCells(tier: number): number
+			local state = Helpers.startCombat(Config, 42)
+			state.players[1].coin = 500
+			local id = Helpers.placeAndBuild(state, 1, "perch", 30, 18)
+			state.players[1].structures[id].tier = tier
+			state.players[1].charge = Config.CHARGE_CAP
+			Rules.stepMut(state, { { player = 1, type = "launch_bird", structId = id, laneY = 18 } }, 0)
+			for _ = 1, 400 do
+				local _, evs = Rules.stepMut(state, {}, 0.25)
+				if T.findEvent(evs, "bird_exit") then
+					break
+				end
+			end
+			return state.players[1].stats.cellsRevealed
+		end
+		T.ok(laneCells(1) > laneCells(0), "an upgraded perch reveals more per pass")
+	end,
+
 	["upgrades change stats but never grant a new role"] = function()
 		local state = Helpers.startCombat(Config, 42)
 		local id = armCatapult(state)

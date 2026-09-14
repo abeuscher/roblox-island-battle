@@ -32,6 +32,7 @@ Requires [Lune](https://github.com/lune-org/lune) on `PATH` (built against
 
 ```sh
 lune run roundrobin 200          # matches per pairing (default 40)
+lune run roundrobin 340          # ~5,000 matches, the M1.5 acceptance run (~8 min)
 lune run roundrobin 200 --bot    # also enter the shipping bot's three presets
 lune run sweep first 1 4 16      # grid, shard index, shard count, matches per pairing
 lune run sweep pacing 1 1 40     # a different grid, unsharded

@@ -276,7 +276,11 @@ function Harness.roundRobin(config: any, archetypes: { any }, matchesPerPair: nu
 							bWins += 1
 						end
 					end
-					if options.keepLogs then
+					-- Logs are kept for the pathology pass, which only needs a
+					-- sample; a full 5,000-match round robin with timelines
+					-- on would otherwise hold half a million action records
+					-- in memory for no extra signal.
+					if options.keepLogs and #results.logs < (options.maxLogs or 600) then
 						table.insert(results.logs, log)
 					end
 					if a.name == b.name then

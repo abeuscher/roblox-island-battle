@@ -261,4 +261,23 @@ Sweep.RECON = {
 	{ key = "BIRD_LANE_WIDTH", label = "BIRD_LANE_WIDTH", values = { 5, 8 } },
 }
 
+-- Fifth grid — the last experiment M1.5 has left to run.
+--
+-- Sweeps two, three and four all found the same wall: time-to-first-real-
+-- base sits at roughly 30-50s no matter which lever moves, so lengthening
+-- a match only makes discovery a *smaller* fraction of it and the §11.3
+-- window moves further out of reach. The cause is that one bird pass is
+-- decisive whenever it happens.
+--
+-- So this grid sweeps what a pass is WORTH at tier 0, now that lane width
+-- is a tier-aware perch stat. A narrow opening lane that upgrades wider is
+-- the only mechanism in the roster that makes intel scale with the length
+-- of the match rather than arriving all at once in the first minute.
+Sweep.INTEL = {
+	{ key = "WEAPONS.perch.reveal_size", label = "LANE_TIER0", values = { 3, 5, 8 } },
+	{ key = "WEAPONS.perch.cooldown", label = "PERCH_COOLDOWN", values = { 14, 20 } },
+	{ key = "WEAPONS.base.hp", label = "BASE_HP", values = { 90, 140 } },
+	{ key = "CHARGE_REGEN_SECONDS", label = "CHARGE_REGEN_SECONDS", values = { 7, 9, 11 } },
+}
+
 return Sweep

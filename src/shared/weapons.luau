@@ -135,7 +135,12 @@ function Weapons.launchBird(
 		hp = config.BIRD_HP + hpBonus,
 		damage = 0,
 		splash = 0,
-		revealSize = config.BIRD_LANE_WIDTH,
+		-- Lane width is the perch's own tier-aware reveal_size, not a
+		-- global: §5 lists reveal size among the stats an upgrade may
+		-- modify, and intel that improves with investment is the only
+		-- mechanism in the roster that can make discovery scale with the
+		-- length of a match (see DECISIONS.md §3.3).
+		revealSize = Weapons.getStat(config, struct.kind, struct.tier, "reveal_size"),
 		lastRevealX = nil, -- set when the bird crosses onto the island
 		sourceStructId = struct.id,
 	}
