@@ -279,7 +279,38 @@ to the first minute. §5 already allows this — `reveal_size` is explicitly
 listed among the stats an upgrade may modify — it simply was not wired up,
 because lane width was reading a global instead of the perch's own stat.
 
-### 3.5 Status of the sweep
+### 3.5 Scaling intel moves the right dial, but not far enough
+
+With lane width wired to the perch's tier-aware `reveal_size` (§2 above),
+the fifth grid swept what a tier-0 pass is worth — 36 cells over lane width
+× perch cooldown × base HP × Charge regen:
+
+| tier-0 lane width | time to first base | as % of match | top archetype | decoy ROI |
+|---|---|---|---|---|
+| 8 (the spec's value) | 37.9s | 9.7% | 0.71 | 0.75 |
+| 5 | 44.1s | 10.4% | 0.63 | 0.77 |
+| 3 | 48.0s | 10.8% | 0.65 | 0.78 |
+
+Every column moves the right way, monotonically: narrowing the opening lane
+delays discovery, flattens archetype dominance toward the 0.60 gate, and
+lifts decoy ROI toward the 1.0 mark below which §11.3 calls decoys a trap.
+It is the first lever in five grids that moves more than one metric in the
+intended direction at once.
+
+The best single cell found so far — tier-0 lane 3, perch cooldown 14, base
+HP 140, Charge regen 11s — misses **only one gate**: 577s matches inside
+the §1 window, top archetype at 0.56 against a 0.60 gate, 43% comebacks,
+20% timeouts, decoy ROI 0.80. The one gate it misses is the first-base
+window, at 10.2% against a target of 25%.
+
+So the direction is established and the magnitude is not. Reaching 25% of a
+577s match means first base near 145s, and the narrowest lane tested still
+lands at 59s. The sixth grid (`lune run sweep narrow`) takes the lever to
+its limit — lane widths 1, 2 and 3, where a width of 1 is a bird that
+reveals only its exact flight line, the same rule every other projectile
+already follows.
+
+### 3.6 Status of the sweep
 
 Four grids have been run, 180 configurations and roughly 22,000 matches:
 
@@ -288,7 +319,8 @@ Four grids have been run, 180 configurations and roughly 22,000 matches:
 | `first` | the §11.5 anti-air lever | 0/54 survive; the lever is inert (§3.1) |
 | `pacing` | lane width, base HP, Charge regen, perch cost | 0/54 survive; match length responds, the ratio does not |
 | `recon` | recon-in-setup, as a controlled A/B | hypothesis refuted (§3.3) |
-| `intel` | tier-0 lane width, perch cooldown, base HP, Charge regen | the scaling-intel test (§3.4) |
+| `intel` | tier-0 lane width, perch cooldown, base HP, Charge regen | 0/36 survive, but every metric moves the right way (§3.5) |
+| `narrow` | lane widths 1–3, base HP, Charge regen | the lever taken to its limit |
 
 Per §11.5 the sweep narrows and does not decide. **No shipping config has
 been chosen**, and `config.luau` still holds the spec's stated defaults, so

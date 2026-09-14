@@ -280,4 +280,22 @@ Sweep.INTEL = {
 	{ key = "CHARGE_REGEN_SECONDS", label = "CHARGE_REGEN_SECONDS", values = { 7, 9, 11 } },
 }
 
+-- Sixth grid — the narrow end of the intel lever.
+--
+-- Grid five showed the direction is right but the magnitude is not: a
+-- tier-0 lane of 3 moves time-to-first-base from ~40s to ~59s and lifts
+-- decoy ROI from 0.73 to 0.80, yet the §11.3 ratio still lands near 10%
+-- because longer matches grow faster than discovery does.
+--
+-- Reaching 25% of a 580s match needs first base near 145s, so this grid
+-- asks the obvious next question: how narrow does the opening lane have to
+-- be before recon stops being one decisive look and becomes a search that
+-- takes minutes? A width of 1 is a bird that reveals only its exact flight
+-- line, which is the same reveal rule every projectile already follows.
+Sweep.NARROW = {
+	{ key = "WEAPONS.perch.reveal_size", label = "LANE_TIER0", values = { 1, 2, 3 } },
+	{ key = "WEAPONS.base.hp", label = "BASE_HP", values = { 140, 200 } },
+	{ key = "CHARGE_REGEN_SECONDS", label = "CHARGE_REGEN_SECONDS", values = { 9, 11 } },
+}
+
 return Sweep

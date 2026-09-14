@@ -28,7 +28,7 @@ local shard = tonumber(args[2]) or 1
 local shards = tonumber(args[3]) or 1
 local matchesPerPair = tonumber(args[4]) or Config.SIM_MATCHES_PER_PAIR
 
-local GRIDS = { first = Sweep.FIRST, second = Sweep.SECOND, pacing = Sweep.PACING, recon = Sweep.RECON, intel = Sweep.INTEL }
+local GRIDS = { first = Sweep.FIRST, second = Sweep.SECOND, pacing = Sweep.PACING, recon = Sweep.RECON, intel = Sweep.INTEL, narrow = Sweep.NARROW }
 local dimensions = GRIDS[which] or Sweep.FIRST
 local combos = Sweep.expand(dimensions)
 local archetypes = Harness.loadArchetypes()
