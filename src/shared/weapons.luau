@@ -285,12 +285,26 @@ local function resolveCoconutImpact(state: State.MatchState, proj: State.Project
 		Weapons.damageCell(state, defenderIndex, tx, ty, proj.damage, proj.owner, events)
 	end
 
-	-- 2. Flight-line reveal (width FLIGHT_LINE_REVEAL_WIDTH, normally 1)
-	--    plus the impact circle. The line runs from the ORIGINAL launch
-	--    point; Fog.reveal drops the cells that are off the enemy island.
+	-- 2. Flight-line reveal plus the impact circle. The line runs from the
+	--    ORIGINAL launch point; Fog.reveal drops the cells that are off the
+	--    enemy island.
+	--
+	--    FLIGHT_LINE_REVEAL_WIDTH is a real knob: 0 disables flight-line
+	--    recon entirely, 1 is the spec's single-cell trace, and higher
+	--    values thicken it. It matters more than it looks — flight lines
+	--    are a second, independent source of intel alongside bird lanes,
+	--    and narrowing only one of them just moves discovery to the other
+	--    (DECISIONS.md §3.7).
+	local config = state.config
+	local lineWidth = config.FLIGHT_LINE_REVEAL_WIDTH
 	local cells = {}
-	for _, cell in Grid.lineCells(math.floor(proj.spawnX or proj.x), math.floor(proj.spawnY or proj.y), tx, ty) do
-		table.insert(cells, cell)
+	if lineWidth > 0 then
+		local spread = math.floor((lineWidth - 1) / 2)
+		for _, cell in Grid.lineCells(math.floor(proj.spawnX or proj.x), math.floor(proj.spawnY or proj.y), tx, ty) do
+			for offset = -spread, lineWidth - 1 - spread do
+				table.insert(cells, { cell[1], cell[2] + offset })
+			end
+		end
 	end
 	for _, cell in Grid.cellsInRadius(tx, ty, proj.revealSize) do
 		table.insert(cells, cell)

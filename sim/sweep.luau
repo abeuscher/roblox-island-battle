@@ -298,4 +298,21 @@ Sweep.NARROW = {
 	{ key = "CHARGE_REGEN_SECONDS", label = "CHARGE_REGEN_SECONDS", values = { 9, 11 } },
 }
 
+-- Seventh grid — the floor test.
+--
+-- Grid six took bird lane width down to 1 and time-to-first-base barely
+-- moved (48-66s, against 59s at width 3). That saturation is the real
+-- result: intel does not come from one channel. Bird lanes, catapult
+-- impact circles and projectile flight lines are three independent sources,
+-- so throttling one just shifts discovery onto the others.
+--
+-- This grid throttles all three at once, which is the only way to test
+-- whether the §11.3 window is reachable at all rather than merely
+-- unreachable one lever at a time.
+Sweep.FLOOR = {
+	{ key = "WEAPONS.perch.reveal_size", label = "LANE_TIER0", values = { 1, 4 } },
+	{ key = "WEAPONS.catapult.reveal_size", label = "IMPACT_RADIUS", values = { 1, 3 } },
+	{ key = "FLIGHT_LINE_REVEAL_WIDTH", label = "FLIGHT_LINE", values = { 0, 1 } },
+}
+
 return Sweep

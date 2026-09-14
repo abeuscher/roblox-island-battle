@@ -220,6 +220,31 @@ return {
 		T.ok(laneCells(1) > laneCells(0), "an upgraded perch reveals more per pass")
 	end,
 
+	["FLIGHT_LINE_REVEAL_WIDTH actually controls the flight-line reveal"] = function()
+		-- Flight lines are a second source of intel alongside bird lanes,
+		-- so this constant has to be a real knob, not a comment.
+		local function lineRevealed(width: number): boolean
+			local config = Config.withOverrides({ FLIGHT_LINE_REVEAL_WIDTH = width })
+			local state = Helpers.startCombat(config, 42)
+			state.players[1].coin = 500
+			local id = Helpers.placeAndBuild(state, 1, "catapult", 33, 18)
+			state.players[1].charge = config.CHARGE_CAP
+			Rules.stepMut(state, { { player = 1, type = "fire", structId = id, x = 20, y = 18 } }, 0)
+			for _ = 1, 200 do
+				local _, evs = Rules.stepMut(state, {}, 0.25)
+				if T.findEvent(evs, "impact") then
+					break
+				end
+			end
+			-- (30,18) lies on the flight path but well outside the 3-cell
+			-- impact circle around (20,18).
+			return state.players[1].belief[Grid.key(30, 18)] ~= nil
+		end
+		T.eq(lineRevealed(1), true, "width 1 traces the flight path")
+		T.eq(lineRevealed(0), false, "width 0 disables flight-line recon")
+		T.eq(lineRevealed(3), true, "wider still traces it")
+	end,
+
 	["upgrades change stats but never grant a new role"] = function()
 		local state = Helpers.startCombat(Config, 42)
 		local id = armCatapult(state)
