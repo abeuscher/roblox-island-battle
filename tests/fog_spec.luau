@@ -209,6 +209,31 @@ return {
 		T.ok(appeared, "an incoming shot becomes visible over the defender's island")
 	end,
 
+	["flight progress is reported, and only for shots the viewer may see"] = function()
+		local state = Helpers.startCombat(Config, 42)
+		state.players[1].coin = 500
+		local id = Helpers.placeAndBuild(state, 1, "catapult", 33, 18)
+		state.players[1].charge = Config.CHARGE_CAP
+		Rules.stepMut(state, { { player = 1, type = "fire", structId = id, x = 20, y = 18 } }, 0)
+
+		local mine = Rules.projectilesFor(state, 1)
+		local _, projectile = next(mine)
+		T.ok(projectile.t01 ~= nil, "the shooter gets flight progress for the arc")
+		T.ok(projectile.t01 >= 0 and projectile.t01 < 1, "progress starts at launch")
+		local first = projectile.t01
+		Helpers.run(state, 1)
+		if state.phase == "combat" then
+			local later = Rules.projectilesFor(state, 1)
+			local _, moved = next(later)
+			if moved then
+				T.ok(moved.t01 > first, "progress advances toward impact")
+			end
+		end
+		-- The defender still sees nothing while it is over the channel.
+		local _, incoming = Rules.projectilesFor(state, 2)
+		T.eq(next(incoming), nil, "no progress leaks for a shot not yet overhead")
+	end,
+
 	["viewFor shows incoming enemy projectiles only once over my island"] = function()
 		local state = Helpers.startCombat(Config, 42)
 		state.players[2].coin = 500

@@ -460,6 +460,21 @@ function Rules.filterEventsFor(events: { State.Event }, playerIndex: number): { 
 	return out
 end
 
+-- Fraction of a coconut's flight completed, 0 at launch and 1 at impact.
+-- Sent to the client so it can draw a lobbed arc; the client cannot derive
+-- it, because it is never told where an enemy shot was launched from.
+local function flightProgress(proj: State.Projectile): number?
+	if proj.kind ~= "coconut" or not proj.spawnX then
+		return nil
+	end
+	local total = Grid.dist(proj.spawnX :: number, proj.spawnY :: number, proj.targetX :: number, proj.targetY :: number)
+	if total < 1e-6 then
+		return 1
+	end
+	local remaining = Grid.dist(proj.x, proj.y, proj.targetX :: number, proj.targetY :: number)
+	return math.clamp(1 - remaining / total, 0, 1)
+end
+
 -- Just the projectiles a player may see, without building a whole view.
 -- Projectiles move every frame but the rest of a view (a belief map of up
 -- to ~1,000 plots) changes rarely, so this exists to let the server push
@@ -471,9 +486,9 @@ function Rules.projectilesFor(state: State.MatchState, playerIndex: number)
 	local mine, incoming = {}, {}
 	for id, proj in state.projectiles do
 		if proj.owner == playerIndex then
-			mine[id] = { kind = proj.kind, x = proj.x, y = proj.y, hp = proj.hp, laneY = proj.laneY }
+			mine[id] = { kind = proj.kind, x = proj.x, y = proj.y, hp = proj.hp, laneY = proj.laneY, t01 = flightProgress(proj) }
 		elseif proj.x <= d then
-			incoming[id] = { kind = proj.kind, x = proj.x, y = proj.y, laneY = proj.laneY }
+			incoming[id] = { kind = proj.kind, x = proj.x, y = proj.y, laneY = proj.laneY, t01 = flightProgress(proj) }
 		end
 	end
 	return mine, incoming
@@ -512,10 +527,11 @@ function Rules.viewFor(state: State.MatchState, playerIndex: number)
 	local incoming = {}
 	for id, proj in state.projectiles do
 		if proj.owner == playerIndex then
-			myProjectiles[id] = { kind = proj.kind, x = proj.x, y = proj.y, hp = proj.hp, laneY = proj.laneY }
+			myProjectiles[id] =
+				{ kind = proj.kind, x = proj.x, y = proj.y, hp = proj.hp, laneY = proj.laneY, t01 = flightProgress(proj) }
 		elseif proj.x <= d then
 			-- Enemy projectile over MY island: visibly incoming.
-			incoming[id] = { kind = proj.kind, x = proj.x, y = proj.y, laneY = proj.laneY }
+			incoming[id] = { kind = proj.kind, x = proj.x, y = proj.y, laneY = proj.laneY, t01 = flightProgress(proj) }
 		end
 	end
 

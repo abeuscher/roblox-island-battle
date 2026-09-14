@@ -369,7 +369,15 @@ function Render:syncProjectiles(mine: { [number]: any }, incoming: { [number]: a
 		-- Projectile x is in the DEFENDER's frame, so an enemy-side
 		-- projectile draws on the enemy island and an incoming one draws
 		-- on ours.
-		local altitude = proj.kind == "bird" and S * 3 or S * 2.2
+		-- Birds cruise flat; coconuts are lobbed, so their altitude follows
+		-- a parabola over the flight the server reports (SPEC §10).
+		local altitude
+		if proj.kind == "bird" then
+			altitude = S * 3
+		else
+			local progress = proj.t01 or 0
+			altitude = S * 1.2 + math.sin(progress * math.pi) * S * 5
+		end
 		local position = self:worldPosition(proj.x, proj.y, enemySide, 0) + Vector3.new(0, altitude, 0)
 		if entry.body:IsA("BasePart") then
 			entry.body.Position = position
