@@ -362,9 +362,83 @@ Wiring this up also turned up dead config: `FLIGHT_LINE_REVEAL_WIDTH` was
 declared, documented and never read — channel 3 was hardcoded. It is a real
 knob now.
 
-### 3.7 Status of the sweep
+### 3.7 The answer: the two targets cannot both be met by tuning
 
-Four grids have been run, 180 configurations and roughly 22,000 matches:
+Throttling all three reveal channels at once works. It is the only thing in
+eight grids that put the primary metric inside its target window:
+
+| lane / impact / flight line | time to first base | as % of match | top archetype |
+|---|---|---|---|
+| 8 / 3 / 1 (the spec's values) | ~38s | ~10% | 0.71 |
+| 1 / 1 / 1 | 62s | **29%** | **0.58** |
+
+That configuration passes every gate except match length, which it misses
+because it runs on the spec's 40 HP bases and ends in 213s.
+
+So the eighth grid held the throttled channels fixed and swept the base HP
+and Charge regen that earlier grids showed produce 8–12 minute matches:
+
+| base HP | Charge regen | time to first base | match length | ratio |
+|---|---|---|---|---|
+| 90 | 7s | 55s | 340s | 16% |
+| 90 | 11s | 50s | 455s | 11% |
+| 140 | 9s | 58s | 498s | 12% |
+| 200 | 9s | 62s | 661s | 9% |
+| 200 | 11s | 61s | 851s | 7% |
+
+The numerator will not move. Time to first base sits between 50 and 71
+seconds across every one of these, while the denominator grows from 340s to
+851s, so the ratio falls monotonically from 16% to 7%. Lengthening the match
+makes the primary metric worse by construction.
+
+**That is the finding, and it is a design finding rather than a tuning one.**
+Across eight grids, roughly 250 configurations and about 30,000 matches,
+time-to-first-real-base never left the 30–71 second band. It cannot be
+stretched to the 120–320s that a 25–45% ratio in an 8–12 minute match
+requires, because it is not set by any cost or cooldown — it is set by how
+long it takes one projectile to cross the island. A bird crosses in about
+six seconds. Recon in this design is one good look, not a search that takes
+minutes, and no constant in `config.luau` changes that.
+
+#### What to do about it
+
+Three honest options, in the order I would put them to a designer:
+
+**A. Prefer the primary metric; accept shorter matches.** Throttle all
+three channels (lane 1, impact 1, flight line 1) and leave base HP and
+Charge regen near the spec's values. That gives first base at 29% of the
+match — inside the §11.3 window — with no archetype above 0.58, and matches
+of about 3.5 minutes. §1's "8–12 minutes" is a Point of Consideration,
+which the spec explicitly says is not a hard rule, whereas §11.3 calls
+time-to-first-base "the number the whole harness exists to produce". When
+two targets conflict, the one the spec calls primary should win. This is
+the configuration I would take to playtest first.
+
+**B. Prefer match length; accept that fog reads as decorative.** Base HP
+140, Charge regen 9s, channels throttled: 498s matches inside the §1
+window, top archetype at the 0.60 gate, comebacks at 0.36 — and first base
+at 12%. Defensible only if playtesting says the early game is enjoyable
+without the search mattering much, which the §11.6 caveat warns the harness
+cannot tell you.
+
+**C. Change the mechanic so discovery can be tuned at all.** The cleanest
+version: a base does not plot as `base` on first sighting. It takes N
+sightings — or a sighting plus a confirming second look — before the plot
+resolves from "something is here" to "a base is here". That keeps stale
+plots, keeps decoys working (a decoy would confirm just as a base does),
+and makes time-to-first-*confirmed*-base a tunable number independent of
+how fast a bird flies, which is exactly what the §11.3 window needs and
+what nothing in the current roster provides. It is a real design change and
+therefore not mine to make.
+
+Not recommended: raising `MATCH_TIMEOUT`, widening the gates, or tuning any
+single reveal channel. The first two hide the result; the third has now
+been tried five separate ways.
+
+### 3.8 Status of the sweep
+
+Eight grids have been run, roughly 250 configurations and about 30,000
+matches:
 
 | grid | what it moved | result |
 |---|---|---|
@@ -373,15 +447,18 @@ Four grids have been run, 180 configurations and roughly 22,000 matches:
 | `recon` | recon-in-setup, as a controlled A/B | hypothesis refuted (§3.3) |
 | `intel` | tier-0 lane width, perch cooldown, base HP, Charge regen | 0/36 survive, but every metric moves the right way (§3.5) |
 | `narrow` | lane widths 1–3, base HP, Charge regen | the lever saturates at ~62s (§3.6) |
-| `floor` | all three reveal channels at once | the reachability test |
+| `floor` | all three reveal channels at once | ratio reaches 29%, in window (§3.7) |
+| `combined` | throttled channels × base HP × Charge regen | the two targets are mutually exclusive (§3.7) |
 
 Per §11.5 the sweep narrows and does not decide. **No shipping config has
 been chosen**, and `config.luau` still holds the spec's stated defaults, so
-the numbers in the repo match the numbers in the document. What the sweep
-has produced is the thing it exists to produce: the knowledge that two of
-the spec's acceptance targets are in tension, which lever is actually load-
-bearing, and one design change that could reconcile them — to be decided by
-a human, after playtesting, not by this run.
+the numbers in the repo match the numbers in the document. Option A in §3.7
+is a recommendation to playtest, not a change that has been made.
+
+`lune run shortlist` reads every grid back and ranks configurations. It
+lists survivors when there are any; there are none yet, so it ranks by
+gates missed and by distance from the two windows, which is the more useful
+output while the tension in §3.7 stands.
 
 ---
 

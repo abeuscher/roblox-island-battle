@@ -158,12 +158,24 @@ local variant = Config.withOverrides({
 
 That is exactly how the sweep works; see `sim/sweep.luau` for the grids.
 
-**Read `DECISIONS.md` §3 before tuning.** The first sweep found that the
-lever the spec names as strongest — anti-air — is close to inert on the
-metric it is supposed to control, for a timing reason: the first bird flies
-before the first nest exists. The levers that actually move discovery are
-`BIRD_LANE_WIDTH` and the perch's `charge_cost`. Tuning `NEST_DPS` first
-will feel like tuning nothing, because it very nearly is.
+**Read `DECISIONS.md` §3 before tuning.** Eight parameter grids found that
+the lever the spec names as strongest — anti-air — is close to inert on the
+metric it is supposed to control. Moving `NEST_DPS` from 10 to 24 changes
+time-to-first-base by under two seconds.
+
+The reason matters more than the number. Intel reaches a player through
+**three independent channels**, and §7's search math models only the first:
+
+1. bird lanes — the perch's `reveal_size` (tier-aware)
+2. catapult impact circles — the catapult's `reveal_size`
+3. projectile flight lines — `FLIGHT_LINE_REVEAL_WIDTH`
+
+Throttle one and discovery simply moves to the others, which is why
+single-lever tuning kept hitting the same ~40-60s floor. Anti-air contests
+channel 1 only, and channels 2 and 3 ride on catapult fire that nests cannot
+touch at all. **If you want to move discovery, move all three together** —
+that is the only thing that ever put the primary metric inside its target
+window.
 
 ### What to watch
 
