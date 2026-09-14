@@ -217,16 +217,86 @@ ordering by making the first flight arrive after the first nests.
   bases at 40 HP against 8 damage is 15 hits, and Charge regen allows ~10
   shots a minute, so ~90s of firing ends a match.
 
-### 3.3 Status of the sweep
+### 3.3 A hypothesis I wrote down, tested, and had to throw away
 
-The first grid (`lune run sweep first`) is complete: **0 of 54 configurations
-survive all gates**, all 54 failing on match length and 45 on
-time-to-first-base. The pacing grid (`lune run sweep pacing`) over
-`BIRD_LANE_WIDTH` × base HP × `CHARGE_REGEN_SECONDS` × perch charge cost is
-the follow-up that moves the levers the data implicates. Per §11.5 the sweep
-narrows and does not decide: no shipping config has been chosen, and
-`config.luau` still holds the spec's stated defaults so that the numbers in
-the repo match the numbers in the document.
+§3.1 above ends with a proposed design fix: forbid buying a perch during
+setup, so the first bird arrives after the first nests and anti-air has
+something to contest. That is a plausible story and it is wrong.
+
+It was tested properly rather than adopted. `SETUP_ALLOWS_RECON` was added
+as a config flag (default `true`, the spec's behaviour) and swept as a
+*dimension* against base HP × Charge regen × lane width — 36 cells, 18 with
+the opening perch allowed and 18 with it barred, otherwise identical:
+
+| | median time-to-first-base | as % of match | median match length |
+|---|---|---|---|
+| perch buyable in setup | 39.6s | 8.5% | 482s |
+| perch barred from setup | 40.5s | 8.5% | 496s |
+
+Paired cell by cell, barring recon from the opening loadout changes
+time-to-first-base by a **median of −0.5s** (range −14.8s to +20.0s). It is
+not a fix; it is not even an effect.
+
+The reason is obvious in hindsight and is the actual finding: agents denied
+an opening perch simply buy one in the first seconds of combat instead. A
+perch is 14 Coin against 40 starting Coin and a 4s build, so the first bird
+flies at t ≈ 8s rather than t ≈ 0. Discovery time is not set by when recon
+becomes *legal*; it is set by how long it takes to get one bird over the
+island, which is a handful of seconds either way.
+
+The deeper version of the finding, which survived every grid: **a single
+bird pass is decisive whenever it happens.** A lane 8 cells wide crossing a
+36-cell island overlaps a given 3×3 base's rows with probability ≈ 0.3, so
+across three bases one uncontested pass finds something about two times in
+three. Nothing that delays or contests *later* passes can matter much when
+the first one usually settles it.
+
+### 3.4 Match length is solved; the ratio is not
+
+The pacing and recon grids did fix the §1 match-length target. 15 of the 36
+recon-grid cells land a median match between 8 and 12 minutes, with base HP
+around 90–200 and Charge regen around 7–11s, and they do it with healthy
+comeback rates (0.45–0.55) rather than by making matches drag.
+
+But raising match length makes the §11.3 ratio *worse*, not better, because
+time-to-first-base does not move with it: a constant ~40s becomes a smaller
+fraction of a longer match. Across four grids and 180 configurations,
+time-to-first-real-base stayed between roughly 30 and 50 seconds no matter
+which lever moved.
+
+That means the 25–45% window and the 8–12 minute window are, with these
+mechanics, close to mutually exclusive. Satisfying both requires first base
+at 120–320s. The only configurations that ever put the ratio in window were
+ones where the *match* was short (a 148s match with first base at 46s is
+31%) — which fails §1 instead.
+
+So the recommendation is a design one, not a tuning one, and it is the
+reason §2 of this document now lists lane width as a perch stat: **intel has
+to scale with the match.** If the opening lane is narrow and widens only
+with purchased upgrades, early discovery is poor, late discovery is good,
+and time-to-first-base can grow with match length instead of staying pinned
+to the first minute. §5 already allows this — `reveal_size` is explicitly
+listed among the stats an upgrade may modify — it simply was not wired up,
+because lane width was reading a global instead of the perch's own stat.
+
+### 3.5 Status of the sweep
+
+Four grids have been run, 180 configurations and roughly 22,000 matches:
+
+| grid | what it moved | result |
+|---|---|---|
+| `first` | the §11.5 anti-air lever | 0/54 survive; the lever is inert (§3.1) |
+| `pacing` | lane width, base HP, Charge regen, perch cost | 0/54 survive; match length responds, the ratio does not |
+| `recon` | recon-in-setup, as a controlled A/B | hypothesis refuted (§3.3) |
+| `intel` | tier-0 lane width, perch cooldown, base HP, Charge regen | the scaling-intel test (§3.4) |
+
+Per §11.5 the sweep narrows and does not decide. **No shipping config has
+been chosen**, and `config.luau` still holds the spec's stated defaults, so
+the numbers in the repo match the numbers in the document. What the sweep
+has produced is the thing it exists to produce: the knowledge that two of
+the spec's acceptance targets are in tension, which lever is actually load-
+bearing, and one design change that could reconcile them — to be decided by
+a human, after playtesting, not by this run.
 
 ---
 
