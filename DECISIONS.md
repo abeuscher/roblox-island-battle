@@ -157,6 +157,13 @@ affect outcomes: it only applies when the agent has already declined to act.
 
 ### 3.1 The anti-air lever is close to inert
 
+> Read §3.6 with this section. The measurement below holds, but the
+> explanation offered here — that anti-air arrives too late to contest the
+> first bird — was tested in §3.3 and refuted. The explanation that
+> survived is in §3.6: intel reaches a player through three channels and
+> anti-air contests only one of them. The sections are left in the order
+> they were written because the wrong turn is part of the finding.
+
 §7 states that anti-air coverage is "the single strongest balance lever in
 the game" and instructs tuning `NEST_DPS`, `NEST_RADIUS` and bird HP first.
 The first sweep ran that exact grid — 54 configurations, 120 matches each,
@@ -193,6 +200,10 @@ arrive later. Hence the third sweep grid (`Sweep.PACING`). Anti-air is not
 useless — it shapes the *middle* of the match, where re-probing happens —
 but it is not the primary lever on the primary metric, and tuning it first
 is tuning the wrong thing.
+
+That conclusion stands. The reasoning that produced it was half right: see
+§3.3 for the part that failed its test, and §3.6 for the part that replaced
+it.
 
 **Recommendation:** treat `BIRD_LANE_WIDTH` and perch charge cost as the
 first-order search levers. Keep anti-air as the second-order lever it

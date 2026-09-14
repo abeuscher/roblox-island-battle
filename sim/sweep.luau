@@ -315,4 +315,24 @@ Sweep.FLOOR = {
 	{ key = "FLIGHT_LINE_REVEAL_WIDTH", label = "FLIGHT_LINE", values = { 0, 1 } },
 }
 
+-- Eighth grid — the decisive one.
+--
+-- Grid seven throttled all three reveal channels at once and put the
+-- first-base ratio inside the §11.3 window for the first time (29% at lane
+-- 1 / impact 1 / flight line 1), with top-archetype win rate at 0.58 under
+-- the 0.60 gate. Its only miss was match length, because it ran on the
+-- default 40 HP bases that end a match in ~200s.
+--
+-- Grids four and six separately found the base HP and Charge regen that
+-- produce 480-720s matches. This grid holds the throttled reveal channels
+-- fixed and sweeps those two, which is the direct test of whether the two
+-- acceptance targets can be met at the same time or only one at a time.
+Sweep.COMBINED = {
+	{ key = "WEAPONS.base.hp", label = "BASE_HP", values = { 90, 140, 200 } },
+	{ key = "CHARGE_REGEN_SECONDS", label = "CHARGE_REGEN_SECONDS", values = { 7, 9, 11 } },
+	-- Held at the throttled values grid seven found.
+	{ key = "WEAPONS.perch.reveal_size", label = "LANE_TIER0", values = { 1 } },
+	{ key = "WEAPONS.catapult.reveal_size", label = "IMPACT_RADIUS", values = { 1 } },
+}
+
 return Sweep
