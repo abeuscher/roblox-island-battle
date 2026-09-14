@@ -74,7 +74,12 @@ end
 
 function Agent.rng(memory: Memory): any
 	local rng = Grid.makeRng(memory.rngState)
-	memory.rngState = (memory.rngState * 1103515245 + 12345) % 4294967296
+-- Multiplier and increment are the same Numerical Recipes pair Grid.makeRng
+-- uses, chosen so the product stays inside the 2^53 range doubles represent
+-- exactly. A larger multiplier (1103515245, say) overflows that range and
+-- the low bits are rounded away before the modulo sees them, which zeroes
+-- the low byte of every subsequent state permanently.
+	memory.rngState = (memory.rngState * 1664525 + 1013904223) % 4294967296
 	return rng
 end
 

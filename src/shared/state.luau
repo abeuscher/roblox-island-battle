@@ -193,8 +193,13 @@ end
 -- In-match deterministic RNG (used for auto-placement on setup timeout).
 function State.rng(state: MatchState): Grid.Rng
 	local rng = Grid.makeRng(state.rngState)
-	-- persist advanced state back so successive calls differ
-	state.rngState = (state.rngState * 1103515245 + 12345) % 4294967296
+	-- Persist advanced state back so successive calls differ.
+-- Multiplier and increment are the same Numerical Recipes pair Grid.makeRng
+-- uses, chosen so the product stays inside the 2^53 range doubles represent
+-- exactly. A larger multiplier (1103515245, say) overflows that range and
+-- the low bits are rounded away before the modulo sees them, which zeroes
+-- the low byte of every subsequent state permanently.
+	state.rngState = (state.rngState * 1664525 + 1013904223) % 4294967296
 	return rng
 end
 

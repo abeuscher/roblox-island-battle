@@ -77,6 +77,54 @@ return {
 		T.ok(#cells >= 25 and #cells <= 32, "got " .. #cells)
 	end,
 
+	["no generator loses its low bits to double overflow"] = function()
+		-- A multiplier large enough to push the product past 2^53 gets its
+		-- low bits rounded away before the modulo, and the stream quietly
+		-- collapses onto multiples of a power of two. Every advance in the
+		-- project must stay inside the exact range.
+		local State = require("../src/shared/state")
+		local Agent = require("../src/shared/agent")
+
+		local function lowByteEntropy(advance: () -> number): number
+			local seen = {}
+			local distinct = 0
+			for _ = 1, 64 do
+				local byte = advance() % 256
+				if not seen[byte] then
+					seen[byte] = true
+					distinct += 1
+				end
+			end
+			return distinct
+		end
+
+		local matchState = State.newMatch(Config, 12345)
+		T.ok(
+			lowByteEntropy(function()
+				State.rng(matchState)
+				return matchState.rngState
+			end) > 20,
+			"match rng keeps its low bits"
+		)
+
+		local memory = Agent.newMemory(12345)
+		T.ok(
+			lowByteEntropy(function()
+				Agent.rng(memory)
+				return memory.rngState
+			end) > 20,
+			"agent rng keeps its low bits"
+		)
+
+		local rng = Grid.makeRng(12345)
+		T.ok(
+			lowByteEntropy(function()
+				return math.floor(rng:next() * 4294967296)
+			end) > 20,
+			"grid rng keeps its low bits"
+		)
+	end,
+
 	["rng is deterministic and in range"] = function()
 		local a = Grid.makeRng(99)
 		local b = Grid.makeRng(99)
