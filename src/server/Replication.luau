@@ -47,10 +47,6 @@ function Replication:pushFull(state: any, playerIndex: number, player: Player?)
 	end
 	local view = Rules.viewFor(state, playerIndex)
 
-	local plots = {}
-	for key, plot in view.belief do
-		plots[key] = plot
-	end
 	self.sentPlots[playerIndex] = {}
 	for key, plot in view.belief do
 		self.sentPlots[playerIndex][key] = plot.t

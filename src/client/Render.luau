@@ -293,13 +293,11 @@ function Render:applyPlots(plots: { [string]: any })
 		local cell = self:buildStructure(kind, x, y, true)
 		cell.Name = key
 		if cell:IsA("BasePart") then
-			-- Plots are stale. Age them visually so the player can see that
-			-- what they are looking at is a memory, not a live feed.
-			local age = plot.t or 0
-			cell.Transparency = 0
 			local hpBar = cell:FindFirstChild("HpBar")
 			if hpBar then
-				hpBar:Destroy() -- enemy HP is not known, only the sighting
+				-- A plot is a sighting, not a live feed: the attacker knows
+				-- what was there, never how much of it is left.
+				hpBar:Destroy()
 			end
 		end
 		cell.Parent = folder

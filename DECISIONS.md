@@ -1,0 +1,259 @@
+# DECISIONS
+
+Every ambiguous call, every deviation from a "Point of Consideration", and
+every resolution of an §14 Open Decision. Written as the build went, in the
+order the questions came up.
+
+---
+
+## 1. Open Decisions from §14
+
+**1.1 Theming and naming — kept as-is, placeholders marked.**
+The roster stays tropical (`coconut`, `grove`, `perch`). Every user-facing
+string is a `display_name` field in `config.luau`, and nothing else reads it,
+so a rename is a one-line change per weapon with no code impact. The
+snake_case `id` is the canonical key everywhere else and should outlive any
+theme change.
+
+**1.2 Birds are fire-and-forget along a pre-drawn lane.**
+A launched bird flies a fixed `laneY` in a straight line until it exits or
+is shot down. Steering was rejected for two reasons: it would make anti-air
+an avoidance minigame rather than an area-denial tool (weakening the third
+leg of §1), and a steerable bird makes the sim's fog discipline much harder
+to state — the agent would need a control loop, not a decision. Revisit only
+if playtests show lanes feel arbitrary rather than committal.
+
+**1.3 Rubble is permanent.**
+A destroyed structure leaves rubble on the ground forever, and rubble plots
+as `rubble` when revealed. It is therefore a permanent information source:
+seeing rubble tells you something *was* here and is gone. Decay was rejected
+because it quietly converts stale plots into live ones, which is the exact
+property §7 forbids. Bulldozing, by contrast, leaves nothing — it is a
+deliberate, voluntary act and should not brand the cell.
+
+**1.4 Bases cannot be relocated in v1.**
+Relocation would undercut the whole placement decision: the hidden layout is
+what you are defending, and being able to move it after it is found converts
+a lost position into a coin cost. Left out. The schema does not block it —
+`base` is an ordinary structure with a footprint — so it could be added as a
+purchasable action later.
+
+**1.5 Mobile input — grid-and-tap, precision pass deferred.**
+`Input.luau` already treats `Enum.UserInputType.Touch` identically to a left
+click and works entirely in whole cells, so the game is playable on a phone
+today. What is deferred is targeting *precision*: at phone width a 36-cell
+island is about 10 px per cell, which is below a comfortable touch target.
+The fix is a confirm-tap (tap to preview the cell, tap again to commit)
+rather than anything structural. Out of scope per §13.
+
+---
+
+## 2. Deviations from the spec, and why
+
+**2.1 A dual-target `import` shim sits at the top of every `src/shared`
+module.** (§2 — "zero Roblox API calls")
+
+The spec requires the same files to run under Lune *and* sync into Studio
+via Rojo, but the two have incompatible module systems: Roblox needs
+`require(script.Parent.grid)`, Lune needs `require("./grid")`. With no build
+step allowed, the only way to serve both is a runtime branch:
+
+```lua
+local function import(name: string): any
+	if script ~= nil then
+		return require((script :: any).Parent[name])
+	end
+	return require("./" .. name)
+end
+```
+
+This *names* a Roblox global, which brushes against the purity rule, so the
+rule is enforced mechanically instead of by trust: `tests/purity_spec.luau`
+scans `src/shared` for Roblox APIs and separately asserts that the only
+mention of `script` in each file is inside this shim. The shim only ever
+tests the global for nil; it never calls a Roblox API.
+
+**2.2 `rules.stepMut` exists alongside the pure `rules.step`.** (§2 — "Pure.
+No mutation of the input.")
+
+`Rules.step` is pure exactly as specified: it deep-clones its input and
+returns a new state. But the sweep runs millions of steps, and cloning the
+entire MatchState (including a belief map of up to ~1,000 plots) per tick
+made the round robin roughly an order of magnitude slower for no behavioural
+difference. So `step` is now a thin wrapper over `stepMut`, which writes in
+place. The server and the harness call `stepMut`; `step` remains the public
+contract. `purity_spec` asserts both that `step` leaves its input untouched
+and that the two produce identical states from identical command streams, so
+the fast path cannot silently diverge.
+
+**2.3 The two islands are *identical*, not "within ±2 buildable cells".** (§3)
+
+Both are generated from the same seed and the same local coordinate frame,
+so buildable counts match exactly rather than approximately. This is
+strictly stronger than the spec's fairness requirement and it removes a
+whole class of "the map was unfair" complaints. It is possible only because
+each island lives in its own local frame (x = diameter is always *your*
+shore), so no mirroring is needed anywhere and the rules stay symmetric.
+
+**2.4 Catapult range is 50, chosen to make the placement tension exact.** (§3)
+
+The spec asks that shore weapons reach deeper than inland ones and that no
+weapon cover the whole enemy island from anywhere. Rather than guess, range
+is pinned to a specific geometric fact: from the inland edge (x = 1) a
+catapult reaches the enemy shoreline column *exactly* and not one cell
+further; from the shore it reaches the enemy's far edge straight across, but
+the enemy's far *corners* are ~53 away and stay out of reach. Both facts are
+asserted in `grid_spec.luau`, so a future range change that flattens the
+spatial decision fails the suite rather than shipping.
+
+**2.5 In-board water is plotted as `water`, not left as haze.** (§7)
+
+A bird's 8-wide lane crosses open sea near the island's edges. Those cells
+are revealed honestly as `water` so the client can draw them as seen-and-
+empty. This does not leak the island's shape, because a cell is only ever
+plotted once a projectile has actually flown over it. Unrevealed cells
+remain uniform haze with no terrain information whatsoever, which is the
+property §7 actually protects. `Agent.coverage` explicitly excludes water
+plots, so an agent cannot mistake overflown sea for searched ground.
+
+**2.6 Bot difficulty's coin multiplier runs through the economy.** (§9)
+
+`Player.coinMultiplier` is a field of MatchState applied inside
+`Economy.tick`, not a bonus the server grants on the side. §9 insists the
+bot "plays by identical rules"; making its one sanctioned advantage a
+first-class, visible, testable part of the rules core is how that claim
+stays checkable. Human players are always 1.0.
+
+**2.7 The §11.4 rubric pass is mechanical, and writes out only the matches
+worth reading.**
+
+The spec asks for match logs to be fed to a model for pathology detection. A
+model is not reachable from a headless Lune process, so `sim/rubric.luau`
+implements the structural half directly — it flags exactly the four failure
+shapes the spec names (long stretches with no consequential action, losing
+players whose final actions had no bearing, matches decided during setup,
+weapons that appear but never affect an outcome) — and `lune run roundrobin`
+writes the flagged matches to `sim/out/flagged.jsonl`. A model pass is then a
+cheap follow-up over a few dozen matches instead of thousands. No "is this
+fun" score is produced anywhere, per §11.4.
+
+**2.8 A third sweep grid was added, because the spec's stated priority order
+turned out to be wrong for this build.** (§7, §11.5)
+
+This is the largest deviation and the most important finding of M1.5; it has
+its own section below.
+
+**2.9 `SIM_IDLE_RECHECK` is a harness knob, not a game rule.**
+
+An agent that returns "nothing worth doing" must not be re-offered a
+decision on the very next tick — building a fog-filtered view is the most
+expensive operation in the loop, and idle agents polling it four times a
+second dominated the sweep's runtime. Idle agents wait 1s. This cannot
+affect outcomes: it only applies when the agent has already declined to act.
+
+---
+
+## 3. What the simulation actually found
+
+### 3.1 The anti-air lever is close to inert
+
+§7 states that anti-air coverage is "the single strongest balance lever in
+the game" and instructs tuning `NEST_DPS`, `NEST_RADIUS` and bird HP first.
+The first sweep ran that exact grid — 54 configurations, 120 matches each,
+6,480 matches. Result, as medians across the grid:
+
+| dimension | range swept | median time-to-first-base | median match length |
+|---|---|---|---|
+| `NEST_DPS` | 10 → 24 | 33.0s → 31.1s | 155s → 163s |
+| `NEST_RADIUS` | 6 → 10 | 31.0s → 31.0s | 160s → 165s |
+| `BIRD_HP` | 12 → 32 | 31.0s → 30.6s | 160s → 156s |
+| `CATAPULT_COOLDOWN` | 6 → 9 | 31.5s → 31.0s | 160s → 155s |
+
+Moving anti-air across its entire plausible range changes time-to-first-base
+by under two seconds.
+
+The cause is a timing fact the spec's search math does not model. §7 reasons
+about how much a bird pass reveals versus how much anti-air can shoot down,
+and that reasoning is correct — but it assumes the two are contemporaries.
+They are not. The opening loadout is bought during setup, a perch is a
+standard opening buy, and so the first bird launches at t ≈ 0. Nests cost 16
+Coin and take `BUILD_SECONDS` to come up. **The flight that actually finds
+the bases happens before any anti-air exists**, so anti-air's numbers cannot
+contest it, no matter how large they are.
+
+The spec's own numbers predict this once the timing is added: one pass
+reveals ~288 of ~1,018 cells (28%), three bases occupy 27 cells, so a single
+uncontested pass finds at least one base about 63% of the time. First base
+found ≈ first bird flown, and the first bird is free of opposition.
+
+So the levers that actually move discovery are the ones that change what a
+*single early pass* is worth (`BIRD_LANE_WIDTH`) and how soon a second one
+can be afforded (perch `charge_cost`), not the ones that contest passes that
+arrive later. Hence the third sweep grid (`Sweep.PACING`). Anti-air is not
+useless — it shapes the *middle* of the match, where re-probing happens —
+but it is not the primary lever on the primary metric, and tuning it first
+is tuning the wrong thing.
+
+**Recommendation:** treat `BIRD_LANE_WIDTH` and perch charge cost as the
+first-order search levers. Keep anti-air as the second-order lever it
+measurably is. A design fix worth considering instead of a tuning one:
+forbid buying a perch during setup, which would restore the spec's intended
+ordering by making the first flight arrive after the first nests.
+
+### 3.2 Secondary findings from the first grid
+
+- **`scout` is the strongest archetype**, top of the field in 26 of 54
+  cells, peaking at 0.84 against the field where the gate is 0.60. Consistent
+  with §1's "information is the resource", but currently past the point of
+  being a choice.
+- **Decoy ROI is 0.73**, below 1.0, which by §11.3's own reading makes
+  decoys a trap at current costs. Worth a cost cut or a second decoy tier
+  before ship.
+- **Every weapon is bought** (share: grove 29%, catapult 25%, nest 23%,
+  decoy 12%, perch 10%), so nothing in the roster is miscosted to the point
+  of never being taken.
+- **Match length is 150–170s against an 8–12 minute target** (§1). This is
+  not an anti-air problem; it is a total-HP-versus-fire-rate problem. Three
+  bases at 40 HP against 8 damage is 15 hits, and Charge regen allows ~10
+  shots a minute, so ~90s of firing ends a match.
+
+### 3.3 Status of the sweep
+
+The first grid (`lune run sweep first`) is complete: **0 of 54 configurations
+survive all gates**, all 54 failing on match length and 45 on
+time-to-first-base. The pacing grid (`lune run sweep pacing`) over
+`BIRD_LANE_WIDTH` × base HP × `CHARGE_REGEN_SECONDS` × perch charge cost is
+the follow-up that moves the levers the data implicates. Per §11.5 the sweep
+narrows and does not decide: no shipping config has been chosen, and
+`config.luau` still holds the spec's stated defaults so that the numbers in
+the repo match the numbers in the document.
+
+---
+
+## 4. Smaller calls, recorded for completeness
+
+- **Tiebreak on Coin spent goes to the bigger spender.** §6 names the chain
+  (bases, then structures, then Coin spent) but not the direction. Awarding
+  it to the player who spent more gives the timeout to the aggressor, which
+  is the right incentive for a game whose failure mode is two players
+  turtling to the cap.
+- **Bases complete instantly; everything else takes `BUILD_SECONDS`.** Bases
+  are pre-placed during setup and free, so a build timer on them would only
+  add a way to run out the setup clock.
+- **`STARTING_CHARGE = 2`.** Not specified. Zero would mean the first six
+  seconds of combat are dead for both players; two lets an opening bird or
+  two opening shots happen immediately.
+- **Belief plots carry a server-only `structId`.** It never leaves the
+  server — `Rules.viewFor` strips it — but it lets the server answer "is
+  this plot still the same structure" without a second lookup.
+  `fog_spec.luau` asserts the client copy has no `structId`.
+- **`timesFooledByDecoy` is withheld until the match ends.** §6 lists it as
+  an end-screen stat; sending it live would let a player detect a decoy from
+  the HUD, defeating the thing it counts.
+- **Nest reveal is permanent, not momentary.** A nest that fires plots its
+  own cell for the bird's owner, and that plot is stale like any other — so
+  a nest that is later bulldozed still shows on the attacker's map. This is
+  the §7 behaviour applied consistently rather than a special case.
+- **Lune is not vendored.** The repo assumes `lune` on PATH (built against
+  0.10.4). Adding a binary to the repo would violate "no external
+  dependencies beyond Rojo and Lune" more than requiring the tool does.

@@ -120,6 +120,13 @@ function Rules.validateCommand(state: State.MatchState, cmd: Command): (boolean,
 		if player.coin < config.WEAPONS[kind].coin_cost then
 			return false, "cannot afford"
 		end
+		if
+			state.phase == "setup"
+			and not config.SETUP_ALLOWS_RECON
+			and config.WEAPONS[kind].role == "find"
+		then
+			return false, "no recon in the opening loadout"
+		end
 		return canPlaceAt(player, kind, cmd.x :: number, cmd.y :: number, config)
 	elseif cmd.type == "bulldoze" then
 		local s, err = ownedUsableStruct(player, cmd.structId)

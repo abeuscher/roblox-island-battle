@@ -301,7 +301,6 @@ local function revealLaneSegment(
 	toX: number,
 	events: { State.Event }
 )
-	local config = state.config
 	local w = proj.revealSize
 	local halfLo = math.floor((w - 1) / 2) -- lane covers laneY-halfLo .. laneY+halfHi
 	local halfHi = w - 1 - halfLo

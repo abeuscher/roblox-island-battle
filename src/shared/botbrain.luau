@@ -131,6 +131,12 @@ local function setupDecision(view: any, config: any, memory: any): any?
 		if not Agent.canAfford(view, config, kind) then
 			break
 		end
+		-- Recon may be barred from the opening loadout (see config).
+		if not config.SETUP_ALLOWS_RECON and config.WEAPONS[kind].role == "find" then
+			index += 1
+			memory.openingIndex = index
+			continue
+		end
 		local cmd = placeCommand(view, config, memory, kind)
 		memory.openingIndex = index + 1
 		if cmd then

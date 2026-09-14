@@ -79,6 +79,19 @@ return {
 		T.eq(err, "combat only")
 	end,
 
+	["recon can be barred from the opening loadout"] = function()
+		local config = Config.withOverrides({ SETUP_ALLOWS_RECON = false })
+		local state = Rules.newMatch(config, 42)
+		local ok, err = Rules.validateCommand(state, { player = 1, type = "place", kind = "perch", x = 30, y = 18 })
+		T.eq(ok, false, "no perch during setup")
+		T.eq(err, "no recon in the opening loadout")
+		-- Everything else is still buyable, and the ban lifts in combat.
+		T.eq(Rules.validateCommand(state, { player = 1, type = "place", kind = "grove", x = 14, y = 14 }), true)
+		local combat = Helpers.startCombat(config, 42)
+		combat.players[1].coin = 100
+		T.eq(Rules.validateCommand(combat, { player = 1, type = "place", kind = "perch", x = 30, y = 18 }), true)
+	end,
+
 	["setup loadout purchases spend starting coin"] = function()
 		local state = Rules.newMatch(Config, 42)
 		Rules.stepMut(state, { { player = 1, type = "place", kind = "grove", x = 14, y = 14 } }, 0.1)

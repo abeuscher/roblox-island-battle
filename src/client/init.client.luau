@@ -22,15 +22,17 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local SnapshotRemote = Remotes:WaitForChild("Snapshot") :: RemoteEvent
 local EventsRemote = Remotes:WaitForChild("Events") :: RemoteEvent
 
-local render = Render.new(Workspace)
-local camera = Camera.new()
-local input = Input.new(camera)
-local ui = UI.new(input, camera)
-input:bind()
-
 -- The client's whole model of the match. Deltas merge into this; nothing
 -- is ever inferred about cells the server has not sent.
 local view: any = nil
+
+local render = Render.new(Workspace)
+local camera = Camera.new()
+local input = Input.new(camera, function()
+	return view
+end)
+local ui = UI.new(input, camera)
+input:bind()
 
 local function applyFull(payload: any)
 	view = payload.view

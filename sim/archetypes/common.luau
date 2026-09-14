@@ -102,6 +102,12 @@ function Common.setupDecision(policy: Policy, view: any, memory: Memory_, ctx: a
 		if not Agent.canAfford(view, config, kind) then
 			break
 		end
+		-- Recon may be barred from the opening loadout (see config).
+		if not config.SETUP_ALLOWS_RECON and config.WEAPONS[kind].role == "find" then
+			bought += 1
+			memory.openingIndex = bought
+			continue
+		end
 		local band = Common.bandFor(kind)
 		local avoid = {}
 		if kind == "decoy_base" then

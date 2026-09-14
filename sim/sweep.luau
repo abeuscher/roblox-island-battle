@@ -250,4 +250,15 @@ function Sweep.csvRow(dimensions: { any }, verdict: Verdict): string
 	return table.concat(cols, ",")
 end
 
+-- Fourth grid — the controlled test of the §3.1 hypothesis in DECISIONS.md.
+-- SETUP_ALLOWS_RECON is swept as a dimension, not assumed, so the run
+-- yields a like-for-like comparison of the spec's opening against one where
+-- the first bird has to be paid for out of combat income.
+Sweep.RECON = {
+	{ key = "SETUP_ALLOWS_RECON", label = "SETUP_RECON", values = { true, false } },
+	{ key = "WEAPONS.base.hp", label = "BASE_HP", values = { 90, 140, 200 } },
+	{ key = "CHARGE_REGEN_SECONDS", label = "CHARGE_REGEN_SECONDS", values = { 7, 9, 11 } },
+	{ key = "BIRD_LANE_WIDTH", label = "BIRD_LANE_WIDTH", values = { 5, 8 } },
+}
+
 return Sweep

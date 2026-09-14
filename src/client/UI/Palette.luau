@@ -38,7 +38,7 @@ end
 function Palette.new(gui: ScreenGui, input: any)
 	local frame = Instance.new("Frame")
 	frame.Name = "Palette"
-	frame.Size = UDim2.new(0, 132, 0, 60 + #Config.PURCHASABLE * 52)
+	frame.Size = UDim2.new(0, 132, 0, 104 + #Config.PURCHASABLE * 52)
 	frame.Position = UDim2.new(0, 12, 0, 72)
 	frame.BackgroundColor3 = Color3.fromRGB(16, 20, 28)
 	frame.BackgroundTransparency = 0.25
@@ -73,6 +73,22 @@ function Palette.new(gui: ScreenGui, input: any)
 		end)
 		self.buttons[id] = b
 	end
+
+	-- Bulldoze and upgrade are modes rather than palette entries: both act
+	-- on a structure already on the board, picked by clicking it.
+	local bulldoze = button(frame, UDim2.new(0, 8, 0, 60 + #Config.PURCHASABLE * 52), UDim2.new(0.5, -10, 0, 36))
+	bulldoze.Text = "Bulldoze"
+	bulldoze.BackgroundColor3 = Color3.fromRGB(72, 40, 40)
+	bulldoze.Activated:Connect(function()
+		input:setMode("bulldoze", nil)
+	end)
+
+	local upgrade = button(frame, UDim2.new(0.5, 2, 0, 60 + #Config.PURCHASABLE * 52), UDim2.new(0.5, -10, 0, 36))
+	upgrade.Text = "Upgrade"
+	upgrade.BackgroundColor3 = Color3.fromRGB(40, 60, 84)
+	upgrade.Activated:Connect(function()
+		input:setMode("upgrade", nil)
+	end)
 
 	-- Weapon tray: one entry per built weapon, showing its cooldown and
 	-- putting the player straight into targeting when clicked.

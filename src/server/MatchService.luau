@@ -135,9 +135,18 @@ function MatchService:onRequest(player: Player, payload: any)
 
 	-- Every gate lives in CommandHandler; nothing here bypasses it. The
 	-- seat comes from the server's own mapping, never from the payload.
-	local cmd = self.commands:accept(self.state, seat, payload, os.clock())
+	local cmd, reason = self.commands:accept(self.state, seat, payload, os.clock())
 	if cmd then
 		table.insert(self.queue, cmd)
+	elseif reason and reason ~= "rate limited" then
+		-- Tell the player why their click did nothing. Rate-limit drops are
+		-- deliberately silent: answering a flood is how a flood becomes an
+		-- amplification vector.
+		self.replication:pushEvents(
+			{ { type = "command_rejected", visibleTo = seat, reason = reason } },
+			seat,
+			player
+		)
 	end
 end
 

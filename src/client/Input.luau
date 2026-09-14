@@ -23,13 +23,24 @@ local RequestRemote = Remotes:WaitForChild("Request") :: RemoteEvent
 local Input = {}
 Input.__index = Input
 
-function Input.new(camera: any, onModeChanged: ((string, any) -> ())?)
+-- `getView` returns the client's current fog-gated snapshot. It is used
+-- only to resolve a clicked own-island cell to one of the player's own
+-- structure ids; every resulting request is still validated server-side.
+function Input.new(camera: any, getView: (() -> any)?, onModeChanged: ((string, any) -> ())?)
 	return setmetatable({
 		camera = camera,
+		getView = getView,
 		mode = "none",
 		payload = nil :: any,
 		onModeChanged = onModeChanged,
 	}, Input)
+end
+
+local function structureAt(view: any, x: number, y: number): number?
+	if not view or not view.occ then
+		return nil
+	end
+	return view.occ[x .. "," .. y]
 end
 
 function Input:setMode(mode: string, payload: any?)
@@ -77,10 +88,19 @@ function Input:handleClick(screenPosition: Vector2, phase: string)
 		self:send({ type = "launch_bird", structId = self.payload, laneY = y })
 		self:clear()
 	elseif self.mode == "bulldoze" and side == "own" then
-		if self.payload then
-			self:send({ type = "bulldoze", structId = self.payload })
+		local view = self.getView and self.getView() or nil
+		local structId = structureAt(view, x, y)
+		if structId then
+			self:send({ type = "bulldoze", structId = structId })
 		end
-		self:clear()
+		-- Bulldoze mode stays active so several can be cleared in a row;
+		-- right click or Escape exits it.
+	elseif self.mode == "upgrade" and side == "own" then
+		local view = self.getView and self.getView() or nil
+		local structId = structureAt(view, x, y)
+		if structId then
+			self:send({ type = "upgrade", structId = structId })
+		end
 	end
 end
 

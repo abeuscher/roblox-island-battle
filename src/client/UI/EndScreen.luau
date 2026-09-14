@@ -70,7 +70,10 @@ function EndScreen.new(gui: ScreenGui)
 	leave.TextColor3 = Color3.new(1, 1, 1)
 	leave.Parent = frame
 	leave.Activated:Connect(function()
-		game:Shutdown()
+		-- A real deployment teleports back to a lobby place here; with no
+		-- lobby to return to, leaving the match means leaving the server.
+		local Players = game:GetService("Players")
+		Players.LocalPlayer:Kick("Left the match")
 	end)
 
 	return setmetatable({ frame = frame, title = title, stats = stats }, EndScreen)

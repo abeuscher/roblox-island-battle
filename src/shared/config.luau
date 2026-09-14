@@ -74,6 +74,18 @@ Config.BASES_PER_PLAYER = 3
 Config.FLIGHT_LINE_REVEAL_WIDTH = 1 -- every projectile reveals its flight line
 Config.DECOY_FAKE_KILL_FEEDBACK = true -- decoy death sends "Base destroyed!"
 
+-- May a recon structure (role "find") be bought during setup?
+--
+-- true reproduces the spec's opening exactly: a perch is a normal opening
+-- buy, so the first bird flies at t ~ 0. The first sweep showed that makes
+-- anti-air almost inert, because the flight that finds the bases happens
+-- before any nest can exist (see DECISIONS.md §3.1).
+--
+-- false delays the first flight until a perch has been paid for and built
+-- out of combat income, which is what gives anti-air something to contest.
+-- Swept as a dimension rather than assumed either way.
+Config.SETUP_ALLOWS_RECON = true
+
 ----------------------------------------------------------------------------
 -- Birds (the "find" leg — [AA-LEVER])
 ----------------------------------------------------------------------------
