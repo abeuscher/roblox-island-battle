@@ -183,6 +183,45 @@ return {
 		T.eq(state.players[2].coin - before2, 3, "opponent unaffected")
 	end,
 
+	["an idling player loses to the bot (SPEC §12 self-playtest b)"] = function()
+		-- End to end through the real loop: setup, auto-placement on
+		-- timeout for the idler, then combat until the bot has taken all
+		-- three bases. Nothing is hand-fed — the bot has to find them.
+		local state = Rules.newMatch(Config, 2024)
+		local difficulty = BotBrain.difficulty(Config, "siege")
+		local memory = BotBrain.asAgent("siege").newMemory(99)
+		memory.playerIndex = 2
+		state.players[2].coinMultiplier = difficulty.coinMultiplier
+		local ctx = { config = Config, difficulty = difficulty }
+
+		local nextDecision, elapsed, dt = 0, 0, 0.25
+		while state.phase ~= "ended" and elapsed < Config.SETUP_SECONDS + Config.MATCH_TIMEOUT do
+			local commands = {}
+			-- Player 1 does nothing at all, ever.
+			if elapsed >= nextDecision then
+				local cmd = BotBrain.decide(Rules.viewFor(state, 2), memory, ctx)
+				if cmd then
+					cmd.player = 2
+					table.insert(commands, cmd)
+					nextDecision = elapsed + difficulty.decisionSeconds
+				else
+					nextDecision = elapsed + 1
+				end
+			end
+			local _, events = Rules.stepMut(state, commands, dt)
+			Agent.observeEvents(memory, Rules.filterEventsFor(events, 2), state.time)
+			elapsed += dt
+		end
+
+		T.eq(state.phase, "ended", "the match resolved")
+		T.eq(state.winner, 2, "the bot won")
+		T.eq(state.endReason, "bases", "by destroying all three bases, not on the clock")
+		T.eq(state.players[1].basesAlive, 0)
+		T.ok(state.players[2].stats.birdsFlown > 0, "it scouted")
+		T.ok(state.players[2].stats.shotsFired > 0, "it bombarded")
+		T.eq(state.players[2].stats.realBaseKills, 3, "and it found all three itself")
+	end,
+
 	["the bot reads only its own view"] = function()
 		-- BotBrain.decide takes (view, memory, ctx). Passing a view whose
 		-- belief map is empty must leave it with nothing to shoot at, even
