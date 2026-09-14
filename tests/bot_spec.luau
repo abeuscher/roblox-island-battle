@@ -162,6 +162,22 @@ return {
 		T.eq(hard.killedSites[site], nil, "siege re-probes after 90s")
 	end,
 
+	["the sim harness is handed the difficulty knobs, not just the brain"] = function()
+		-- Without these the three presets are indistinguishable in
+		-- simulation: the harness would pace every agent identically and
+		-- ignore the income multiplier, so a round robin would report the
+		-- easy and hard bots as the same opponent.
+		local easy = BotBrain.asAgent("beachcomber")
+		local mid = BotBrain.asAgent("skirmish")
+		local hard = BotBrain.asAgent("siege")
+		T.eq(easy.actionInterval, 5)
+		T.eq(mid.actionInterval, 3)
+		T.eq(hard.actionInterval, 2)
+		T.eq(easy.coinMultiplier, 0.8)
+		T.eq(hard.coinMultiplier, 1.25)
+		T.ok(easy.name ~= hard.name, "and they are distinguishable by name in a matrix")
+	end,
+
 	["difficulty presets differ only in the documented knobs"] = function()
 		local easy = BotBrain.difficulty(Config, "beachcomber")
 		local mid = BotBrain.difficulty(Config, "skirmish")

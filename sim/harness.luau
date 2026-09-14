@@ -61,8 +61,27 @@ function Harness.runMatch(config: any, seed: number, agents: { any }, opts: Matc
 	local ctx = { config = config }
 
 	-- Action-rate gate, in cumulative simulated seconds.
+	--
+	-- SIM_AGENT_ACTION_INTERVAL is a floor that no agent may go under: an
+	-- unconstrained agent has infinite APM and reports a game no human can
+	-- play (SPEC §11.1). An agent may declare a SLOWER rate, which is how
+	-- the bot's difficulty presets get measured rather than assumed — the
+	-- easy preset really does act less often here, exactly as it does in a
+	-- live match.
+	local interval = {
+		math.max(config.SIM_AGENT_ACTION_INTERVAL, agents[1].actionInterval or 0),
+		math.max(config.SIM_AGENT_ACTION_INTERVAL, agents[2].actionInterval or 0),
+	}
 	local nextAction = { 0, 0 }
 	local simTime = 0
+
+	-- An agent may also declare an income multiplier, the one sanctioned
+	-- asymmetry a bot difficulty preset has (SPEC §9). It is applied to the
+	-- match state so it runs through Economy.tick like everything else,
+	-- rather than being special-cased in the loop.
+	for i = 1, 2 do
+		state.players[i].coinMultiplier = agents[i].coinMultiplier or 1
+	end
 
 	local log = {
 		seed = seed,
@@ -107,7 +126,7 @@ function Harness.runMatch(config: any, seed: number, agents: { any }, opts: Matc
 					-- issue a command on behalf of its opponent.
 					cmd.player = i
 					table.insert(commands, cmd)
-					nextAction[i] = simTime + config.SIM_AGENT_ACTION_INTERVAL
+					nextAction[i] = simTime + interval[i]
 					if options.timeline then
 						table.insert(log.timeline, {
 							t = simTime,

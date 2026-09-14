@@ -27,6 +27,7 @@ end
 
 local Agent = import("agent")
 local Grid = import("grid")
+local Config = import("config")
 
 local BotBrain = {}
 
@@ -358,10 +359,17 @@ end
 
 -- Packages the brain as a sim-harness agent so the shipping bot can be run
 -- against the scripted archetypes, not just against a human.
-function BotBrain.asAgent(preset: string)
+function BotBrain.asAgent(preset: string, config: any?)
+	local difficulty = BotBrain.difficulty(config or Config, preset)
 	return {
 		name = "bot_" .. preset,
 		preset = preset,
+		-- Declared so the sim harness applies the same difficulty knobs a
+		-- live match does. Without these the presets are indistinguishable
+		-- in simulation, which makes the round robin silently useless for
+		-- measuring the bot.
+		actionInterval = difficulty.decisionSeconds,
+		coinMultiplier = difficulty.coinMultiplier,
 		newMemory = function(seed: number)
 			local memory = Agent.newMemory(seed)
 			memory.openingIndex = 1
