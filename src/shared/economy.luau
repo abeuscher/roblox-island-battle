@@ -41,6 +41,7 @@ function Economy.tick(state: State.MatchState, dt: number, events: { State.Event
 					income += groveIncome(config, s)
 				end
 			end
+			income = math.floor(income * player.coinMultiplier + 0.5)
 			player.coin += income
 			player.stats.coinEarned += income
 		end

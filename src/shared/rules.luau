@@ -470,10 +470,16 @@ function Rules.viewFor(state: State.MatchState, playerIndex: number)
 	end
 
 	local structures = {}
+	local occ = {}
 	for id, s in player.structures do
 		if s.alive then
 			structures[id] = State.deepClone(s)
 		end
+	end
+	-- Own-island occupancy: fully known to its owner, so safe to ship and
+	-- needed by the build palette (and by any agent picking a legal cell).
+	for key, id in player.occ do
+		occ[key] = id
 	end
 
 	local myProjectiles = {}
@@ -500,11 +506,16 @@ function Rules.viewFor(state: State.MatchState, playerIndex: number)
 		setupReady = player.setupReady,
 		island = State.deepClone(player.island),
 		structures = structures,
+		occ = occ,
 		belief = belief,
 		myProjectiles = myProjectiles,
 		incomingProjectiles = incoming,
 		-- The kill counter the player SEES — includes decoy fake-kills.
 		baseKills = player.stats.believedBaseKills,
+		-- Withheld until the match is over: showing a live count of decoy
+		-- kills would defeat the deception it describes (SPEC §6 end
+		-- screen).
+		timesFooledByDecoy = state.phase == "ended" and player.stats.timesFooledByDecoy or nil,
 		stats = {
 			shotsFired = player.stats.shotsFired,
 			birdsFlown = player.stats.birdsFlown,

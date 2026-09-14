@@ -199,6 +199,7 @@ local function destroyStructure(
 				visibleTo = attackerIndex,
 				x = s.x,
 				y = s.y,
+				footprint = def.footprint,
 			})
 		elseif s.kind == "decoy_base" and config.DECOY_FAKE_KILL_FEEDBACK then
 			-- Identical feedback to a real kill. The kill counter shown to
@@ -211,6 +212,7 @@ local function destroyStructure(
 				visibleTo = attackerIndex,
 				x = s.x,
 				y = s.y,
+				footprint = def.footprint,
 			})
 		end
 	end
@@ -236,6 +238,7 @@ function Weapons.damageCell(
 			structId = s.id,
 			kind = s.kind,
 			hp = math.max(0, s.hp),
+			damage = damage,
 			x = s.x,
 			y = s.y,
 		})
@@ -390,6 +393,7 @@ function Weapons.advanceProjectiles(state: State.MatchState, dt: number, events:
 					type = "bird_down",
 					visibleTo = "all",
 					owner = proj.owner,
+					laneY = laneY,
 					x = proj.x,
 					y = proj.y,
 				})

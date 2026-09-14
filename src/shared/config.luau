@@ -98,6 +98,9 @@ Config.BOT_PRESETS = {
 Config.SIM_AGENT_ACTION_INTERVAL = 2.5 -- max one agent command per N sim-seconds
 Config.SIM_MATCHES_PER_PAIR = 200
 Config.SIM_DT = 0.25 -- headless step size
+-- How long an agent with nothing worth doing waits before being offered a
+-- decision again. Not a game rule: purely a harness throughput knob.
+Config.SIM_IDLE_RECHECK = 1.0
 
 ----------------------------------------------------------------------------
 -- Weapon / structure roster (SPEC §5). IDs are canonical snake_case.

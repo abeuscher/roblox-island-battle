@@ -70,6 +70,11 @@ export type Player = {
 	belief: { [string]: BeliefPlot },
 	stats: PlayerStats,
 	disconnectTimer: number?, -- counts up while disconnected (server sets)
+	-- Income scaling, used only by bot difficulty presets (SPEC §9). The
+	-- bot plays by identical rules; this is the one dial that differs, and
+	-- it runs through the economy like everything else rather than around
+	-- it. Always 1 for human players.
+	coinMultiplier: number,
 }
 
 export type Projectile = {
@@ -164,6 +169,7 @@ local function newPlayer(index: number, config: any, seed: number): Player
 		belief = {},
 		stats = newStats(),
 		disconnectTimer = nil,
+		coinMultiplier = 1,
 	}
 end
 

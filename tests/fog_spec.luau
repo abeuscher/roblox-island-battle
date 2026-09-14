@@ -115,6 +115,15 @@ return {
 		T.ok(view.stats.timesFooledByDecoy == nil, "decoy tell stays server-side until the end screen")
 	end,
 
+	["the decoy tally is withheld until the match ends"] = function()
+		local state = Helpers.startCombat(Config, 42)
+		state.players[1].stats.timesFooledByDecoy = 2
+		T.eq(Rules.viewFor(state, 1).timesFooledByDecoy, nil, "hidden during play")
+		local events = {}
+		Rules.endMatch(state, 2, "bases", events)
+		T.eq(Rules.viewFor(state, 1).timesFooledByDecoy, 2, "revealed on the end screen")
+	end,
+
 	["viewFor strips structIds from belief plots"] = function()
 		local state = Helpers.startCombat(Config, 42)
 		Fog.reveal(state, 1, { { 8, 8 } }) -- P2 base anchor
