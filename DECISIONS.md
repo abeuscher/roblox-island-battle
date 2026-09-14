@@ -310,7 +310,48 @@ its limit — lane widths 1, 2 and 3, where a width of 1 is a bird that
 reveals only its exact flight line, the same rule every other projectile
 already follows.
 
-### 3.6 Status of the sweep
+### 3.6 The lever saturates, and that is the real answer
+
+Taking bird lane width to its limit does not keep working. Across the sixth
+grid:
+
+| tier-0 lane width | time to first base |
+|---|---|
+| 8 (the spec's value) | 37.9s |
+| 5 | 44.1s |
+| 3 | ~47s |
+| 2 | 62.2s |
+| 1 | 63.0s |
+
+Widths 2 and 1 are indistinguishable. A bird that reveals a single cell of
+its flight line is as good at finding bases as one that reveals a
+three-wide lane, which only makes sense if by then the bases are not being
+found by birds at all.
+
+They are not. **Intel reaches a player through three independent channels**,
+and the spec's §7 search math only models the first:
+
+1. bird lanes — `BIRD_LANE_WIDTH` / the perch's `reveal_size`
+2. catapult impact circles — ~28 cells per shot at `reveal_size` 3
+3. projectile flight lines — every shot traces its whole path over the
+   enemy island
+
+Throttle one and discovery simply moves to the others. That is why five
+grids of single-lever tuning all hit the same ~40-60s floor: the floor is
+not set by the lever being moved, it is set by whichever channel is left.
+It also explains §3.1 — anti-air contests channel 1 only, and channels 2
+and 3 ride on catapult fire, which nests cannot touch at all.
+
+The seventh grid (`lune run sweep floor`) throttles all three at once. It
+exists to answer the question the first six could not: whether the §11.3
+window is reachable in principle, or unreachable one lever at a time
+because it was never a one-lever problem.
+
+Wiring this up also turned up dead config: `FLIGHT_LINE_REVEAL_WIDTH` was
+declared, documented and never read — channel 3 was hardcoded. It is a real
+knob now.
+
+### 3.7 Status of the sweep
 
 Four grids have been run, 180 configurations and roughly 22,000 matches:
 
@@ -320,7 +361,8 @@ Four grids have been run, 180 configurations and roughly 22,000 matches:
 | `pacing` | lane width, base HP, Charge regen, perch cost | 0/54 survive; match length responds, the ratio does not |
 | `recon` | recon-in-setup, as a controlled A/B | hypothesis refuted (§3.3) |
 | `intel` | tier-0 lane width, perch cooldown, base HP, Charge regen | 0/36 survive, but every metric moves the right way (§3.5) |
-| `narrow` | lane widths 1–3, base HP, Charge regen | the lever taken to its limit |
+| `narrow` | lane widths 1–3, base HP, Charge regen | the lever saturates at ~62s (§3.6) |
+| `floor` | all three reveal channels at once | the reachability test |
 
 Per §11.5 the sweep narrows and does not decide. **No shipping config has
 been chosen**, and `config.luau` still holds the spec's stated defaults, so
