@@ -1,0 +1,4 @@
+sim/out/
+*.rbxl
+*.rbxlx
+*.rbxl.lock

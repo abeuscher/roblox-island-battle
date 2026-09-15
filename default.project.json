@@ -1,0 +1,54 @@
+{
+  "name": "IslandSiege",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      },
+      "Remotes": {
+        "$className": "Folder",
+        "Request": { "$className": "RemoteEvent" },
+        "Snapshot": { "$className": "RemoteEvent" },
+        "Events": { "$className": "RemoteEvent" }
+      },
+      "Assets": {
+        "$className": "Folder",
+        "$comment": "Drop real art here to replace placeholders. See README.md for the exact names; absent models fall back to placeholders silently.",
+        "Structures": { "$className": "Folder" },
+        "Effects": { "$className": "Folder" }
+      }
+    },
+
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    },
+
+    "Lighting": {
+      "$properties": {
+        "Ambient": [0.35, 0.38, 0.42],
+        "OutdoorAmbient": [0.42, 0.45, 0.5],
+        "ClockTime": 14,
+        "GlobalShadows": true
+      }
+    },
+
+    "Workspace": {
+      "$properties": {
+        "FilteringEnabled": true,
+        "Gravity": 196.2
+      }
+    }
+  }
+}
